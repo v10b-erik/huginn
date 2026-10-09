@@ -1,0 +1,54 @@
+name: App
+options:
+  bundleIdPrefix: no.huginn
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+
+packages:
+  AppCore:
+    path: AppCore
+
+settings:
+  base:
+    CODE_SIGNING_ALLOWED: "NO"
+    GENERATE_INFOPLIST_FILE: "YES"
+
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: AppCore
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+
+  App-macOS:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    dependencies:
+      - package: AppCore
+
+  AppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: App
+      - package: AppCore
+
+schemes:
+  App:
+    build:
+      targets:
+        App: all
+    test:
+      targets: [AppTests]
+
+  App-macOS:
+    build:
+      targets:
+        App-macOS: all

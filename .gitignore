@@ -1,0 +1,9 @@
+.build/
+*.xcodeproj
+DerivedData/
+node_modules/
+.next/
+dist/
+*.xcresult
+.env
+.env.local

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "xcodebuild": {
+      "type": "stdio",
+      "command": "ssh",
+      "args": [
+        "-o", "LogLevel=ERROR",
+        "draupnir",
+        "export PATH=/opt/homebrew/bin:$PATH && npx -y xcodebuildmcp@latest mcp"
+      ]
+    }
+  }
+}

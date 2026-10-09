@@ -1,0 +1,8 @@
+#!/bin/bash
+# Kjøres av git etter en vellykket merge (også `git pull` som merger). Aktiv
+# fordi wt.sh setter core.hooksPath=Scripts/hooks første gang den kjøres.
+#
+# Bare på main: en merge INN i main er øyeblikket feature-trær blir overflødige.
+# En pull i et feature-tre skal ikke rive naboenes trær under føttene på dem.
+[ "$(git branch --show-current 2>/dev/null)" = "main" ] || exit 0
+exec "$(git rev-parse --show-toplevel)/Scripts/wt.sh" sweep

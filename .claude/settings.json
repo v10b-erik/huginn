@@ -1,0 +1,49 @@
+{
+  "model": "sonnet",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
+  "workflowSizeGuideline": "medium",
+  "permissions": {
+    "allow": [
+      "Bash(bun test:*)",
+      "Bash(bun run build:*)",
+      "Bash(swift test:*)",
+      "Bash(swift build:*)",
+      "Bash(./Scripts/remote-test.sh:*)",
+      "Bash(rsync:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Read(.env*)"
+    ],
+    "additionalDirectories": [
+      "~/basic/20-29_personal/21_tech/21.22_huginn"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-destructive.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-test-gate.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

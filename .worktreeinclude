@@ -1,0 +1,7 @@
+# Gitignorerte filer en ny worktree ikke virker uten. Kopieres inn av
+# `claude --worktree` og av Scripts/wt.sh new. Hold lista kort — node_modules
+# hører ikke hjemme her (bun install er raskere enn å kopiere treet).
+.env
+.env.local
+server/.env
+web/.env.local

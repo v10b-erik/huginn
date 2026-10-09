@@ -1,0 +1,20 @@
+# systemd user-unit for produktserveren på ygg-v1 (dev-rig driftskonvensjon).
+# Installer: erstatt <PRODUKT>, legg i ~/.config/systemd/user/<PRODUKT>-server.service,
+# systemctl --user daemon-reload && systemctl --user enable --now <PRODUKT>-server
+# (linger er aktivert på ygg — tjenesten overlever utlogging og reboot).
+[Unit]
+Description=<PRODUKT> server (bun)
+After=network-online.target postgresql@17-main.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+WorkingDirectory=%h/code/<PRODUKT>/server
+ExecStart=%h/.bun/bin/bun src/index.ts
+EnvironmentFile=%h/code/<PRODUKT>/server/.env
+Restart=always
+RestartSec=3
+MemoryMax=512M
+
+[Install]
+WantedBy=default.target

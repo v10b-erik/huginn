@@ -1,0 +1,45 @@
+# CI på egne runnere: ygg-v1 (linux:host) + draupnir (macos:host).
+# Kjøres av Forgejo Actions ved push; GitHub ignorerer .forgejo/-katalogen.
+name: ci
+on:
+  push:
+    # `ko-*` = arbeidskøens grener (arbeidsflate §4.4): køen rebaser mot main, pusher
+    # grenen og venter på CI her FØR den fast-forwarder main. Ingen andre grener.
+    branches: [main, 'ko-*']
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: linux
+    steps:
+      - uses: actions/checkout@v4
+      - name: AppCore (swift test, Linux)
+        run: |
+          export PATH="$HOME/.local/share/swiftly/bin:$PATH"
+          swift test --package-path apple/AppCore
+      - name: Server (bun test)
+        run: |
+          export PATH="$HOME/.bun/bin:$PATH"
+          bun install --frozen-lockfile
+          cd server && bun test
+      - name: Web (next build)
+        run: |
+          export PATH="$HOME/.bun/bin:$PATH"
+          cd web && bun run build
+
+  macos:
+    runs-on: macos
+    steps:
+      - uses: actions/checkout@v4
+      - name: AppCore (swift test, macOS-paritet)
+        run: bash Scripts/mac-test.sh core
+      - name: iOS simulator (xcodebuild test)
+        run: bash Scripts/mac-test.sh ios
+      # Mac-målet kompilerer de SAMME filene under apple/Sources som iOS. Uten
+      # dette steget merkes iOS-only API (`.navigationBar`, `UIImage`) aldri i
+      # CI — i v10b sto Mac-flaten brukket i seks dager av nettopp den grunnen.
+      - name: macOS-appen (xcodebuild build)
+        run: bash Scripts/mac-test.sh mac

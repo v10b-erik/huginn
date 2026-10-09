@@ -1,0 +1,12 @@
+{
+  "name": "dev-rig-template",
+  "private": true,
+  "workspaces": [
+    "web",
+    "server",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
