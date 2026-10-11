@@ -142,6 +142,11 @@ import Testing
         "Skriv @ og @@ og a@b i dag",
         "Hent fra host:8080 i dag",
         "Pris er 5 < 7 > 3 kr",
+        // pakke- og versjonsangivelser er IKKE e-post: toppnivådomenet må begynne med en bokstav
+        "Oppgrader react@18.2.0 til next@14.1",
+        "Pin python@3.12 i CI",
+        "Installer lodash@4.17.21 nå",
+        "Bruk node@20 og pnpm@9.1.0",
     ])
     func meningsbærendeTegnOgOrdBlirStående(inn: String) {
         let r = venterRad(navn: "m", tekst: inn)
@@ -192,6 +197,14 @@ import Testing
     @Test func ordAvBareZwjOgZwnjErBlanktMenBeholdesIkkeSomTittel() {
         #expect(venterRad(navn: "ko-xyz", tekst: "\u{200D}\u{200C} \u{200D}").tittel == "ko-xyz")
         #expect(venterRad(navn: "m", tekst: "\u{200D}\nFørste synlige").tittel == "Første synlige")
+    }
+
+    /// U+200E (LRM), U+202E (RLO), U+2063 (usynlig skilletegn), U+00AD (myk bindestrek), U+3164 (hangul filler) og
+    /// FE0F+ZWJ tegnes ikke, men er verken blanke eller i `usynlige`: en tekst av bare slike ga en tittel som ser tom ut.
+    @Test(arguments: ["\u{200E}", "\u{202E}", "\u{2063}", "\u{00AD}", "\u{3164}", "\u{FE0F}\u{200D}", "\u{200E} \u{2063}"])
+    func ikkeTegnedeTegnGirIkkeEnTomTittel(tekst: String) {
+        let r = venterRad(navn: "håndtak-x", tekst: tekst)
+        #expect(r.tittel == "håndtak-x", "en tekst som ikke tegnes skal falle til håndtaket")
     }
 
     @Test func usynligeTegnIMålFjernesOgFørsteSynligeLinjeBrukes() {

@@ -242,8 +242,9 @@ public struct NaaSkjerm: Sendable, Equatable {
     /// så uten dette ble en tekst av bare slike tegn en «tittel» som ser tom ut. Fjernes fra teksten.
     private static let usynlige: Set<Unicode.Scalar> = ["\u{200B}", "\u{2060}", "\u{FEFF}"]
     /// ZWJ og ZWNJ binder emoji-sekvenser (👨‍👩‍👧, 🏳️‍🌈) og er meningsbærende i bl.a. persisk og indiske skrifter:
-    /// de beholdes i teksten. De teller bare ikke som innhold i «er ordet blankt?».
-    private static let bindetegn: Set<Unicode.Scalar> = ["\u{200C}", "\u{200D}"]
+    /// de BEHOLDES i teksten. «Er ordet blankt?» avgjøres derimot med `isDefaultIgnorableCodePoint` (Unicode: tegn som
+    /// ikke tegnes, bl.a. ZWJ/ZWNJ, LRM, RLO, U+2063, myk bindestrek, hangul filler og variasjonsvelgere), så en tekst av
+    /// bare slike tegn faller til håndtaket i stedet for å bli en tittel som ser tom ut.
 
     /// Første linje med innhold, slik raden viser den: U+200B/U+2060/U+FEFF fjernet, all whitespace (mellomrom, tabulator,
     /// nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold (ord av bare ZWJ/ZWNJ er blanke).
@@ -253,14 +254,18 @@ public struct NaaSkjerm: Sendable, Equatable {
         let synlig = String(String.UnicodeScalarView(tekst.unicodeScalars.filter { !usynlige.contains($0) }))
         for linje in synlig.unicodeScalars.split(whereSeparator: { CharacterSet.newlines.contains($0) }) {
             let ord = String(String.UnicodeScalarView(linje)).split(whereSeparator: \.isWhitespace)
-                .filter { $0.unicodeScalars.contains { !bindetegn.contains($0) } }
+                .filter { $0.unicodeScalars.contains { !$0.properties.isDefaultIgnorableCodePoint } }
             if !ord.isEmpty { return ord.joined(separator: " ") }
         }
         return ""
     }
 
-    /// E-postadresse: `lokaldel@domene.tld`, minst ett punktum etter `@`, ingen mellomrom (ordet er allerede uten).
-    private static let epostMønster = try! NSRegularExpression(pattern: "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$")
+    /// E-postadresse: `lokaldel@domene.tld`, minst ett punktum etter `@`, ingen mellomrom (ordet er allerede uten), og
+    /// siste domenedel (toppnivådomenet) MÅ begynne med en bokstav. Uten det ble pakke- og versjonsangivelser regnet som
+    /// e-post og fjernet fra tittelen: `react@18.2.0`, `python@3.12`, `next@14.1`, `lodash@4.17.21`.
+    private static let epostMønster = try! NSRegularExpression(
+        pattern: "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)*\\.\\p{L}[^@\\s.]*$"
+    )
 
     /// Ordet er teknisk støy bare hvis det er en e-postadresse eller en URL (`://`), også pakket inn i `<…>` eller
     /// parentes, med tegnsetting hengende på. `@alle`, `@`, `f()`, `-5` og `<main>` er IKKE støy.
