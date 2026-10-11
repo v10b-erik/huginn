@@ -11,6 +11,118 @@ private struct Bestemt: Autentisering {
 
 /// Skriveveien i app-målet: modellen kobler brikken til `SvarTjeneste`. Selve `LAContext`-dialogen kan ikke kjøres her
 /// (ingen biometri i testverten); `LokalAutentisering.utfall(for:)` testes som ren avbildning.
+/// Kilde som kan holdes midt i en henting og få feile, til å spille av «oppfriskningen feiler mens du velger neste kort».
+private final class StyrbarKilde: NaaKilde, @unchecked Sendable {
+    private let lås = NSLock()
+    private var kort: [NaaKort]
+    private var feiler = false
+    private var holdes = false
+    private var ventende: CheckedContinuation<Void, Never>?
+
+    init(_ kort: [NaaKort]) { self.kort = kort }
+
+    func hold() { lås.withLock { holdes = true } }
+    func sett(feiler: Bool, kort: [NaaKort]? = nil) { lås.withLock { self.feiler = feiler; if let kort { self.kort = kort } } }
+    var erVentende: Bool { lås.withLock { ventende != nil } }
+    func slipp() {
+        let c = lås.withLock { () -> CheckedContinuation<Void, Never>? in holdes = false; defer { ventende = nil }; return ventende }
+        c?.resume()
+    }
+
+    func hent() async throws -> NaaSkjerm {
+        if lås.withLock({ holdes }) {
+            await withCheckedContinuation { c in
+                let straks = lås.withLock { () -> Bool in
+                    if holdes { ventende = c; return false }
+                    return true
+                }
+                if straks { c.resume() }
+            }
+        }
+        let (feil, k) = lås.withLock { (feiler, kort) }
+        if feil { throw URLError(.notConnectedToInternet) }
+        return NaaSkjerm(naa: Naa(kort: k), traader: [], nå: Date(timeIntervalSince1970: 1_760_000_000))
+    }
+}
+
+@MainActor @Suite struct GodkjennRekkefølgeTests {
+    private func kort(_ id: String) -> NaaKort {
+        // NaaKort har ingen offentlig init: bygg det slik klienten gjør, fra serverens JSON.
+        try! TraadflataKlient.dekoder().decode(NaaKort.self, from: Data(#"{"id":"\#(id)","describe":"Kort \#(id)","status":"pending"}"#.utf8))
+    }
+
+    private func vent(_ betingelse: () -> Bool) async {
+        for _ in 0..<400 where !betingelse() { try? await Task.sleep(for: .milliseconds(5)) }
+    }
+
+    private func ider(_ m: NaaModell) -> [String] { m.synligSkjerm?.godkjenninger.map(\.id) ?? [] }
+
+    /// N1: godkjenn A, velg B mens oppfriskningen pågår, og la oppfriskningen FEILE. A skal fortsatt være skjult.
+    @Test func avgjortKortTapesIkkeNårNyttKortVelgesOgOppfriskningenFeiler() async throws {
+        let kilde = StyrbarKilde([kort("kort-aaaa"), kort("kort-bbbb")])
+        let m = NaaModell(kilde: kilde, send: { _, _ in .avgjort }, autentisering: Bestemt(utfall: .ok))
+        await m.last()
+        #expect(ider(m) == ["kort-aaaa", "kort-bbbb"])
+        let a = try #require(m.skjerm?.godkjenninger.first { $0.id == "kort-aaaa" })
+        let b = try #require(m.skjerm?.godkjenninger.first { $0.id == "kort-bbbb" })
+
+        kilde.hold()
+        m.velg(try #require(a.godkjenn))
+        let flyt = Task { await m.svar?.bekreft() }
+        await vent { kilde.erVentende }
+        #expect(ider(m) == ["kort-bbbb"], "A er skjult så snart svaret kom, mens oppfriskningen pågår")
+
+        m.velg(try #require(b.godkjenn))  // kvitteringen låser ikke B
+        guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("ventet .bekrefter(B)"); return }
+        #expect(f.kortId == "kort-bbbb")
+
+        kilde.sett(feiler: true)  // nettbrudd rett etter at POST-en gikk gjennom
+        kilde.slipp()
+        await flyt.value
+        #expect(m.feil != nil, "oppfriskningen feilet")
+        #expect(ider(m) == ["kort-bbbb"], "A står ikke igjen med aktive knapper")
+        #expect(m.svar?.kvittering?.forespørsel.kortId == "kort-aaaa", "kvitteringen for A er ikke tapt")
+        #expect(m.svar?.avgjorte == ["kort-aaaa"])
+    }
+
+    /// N1, variant: oppfriskningen lykkes og serveren har fjernet A. Alt er konsistent.
+    @Test func avgjortKortErBorteOgKonsistentNårOppfriskningenLykkes() async throws {
+        let kilde = StyrbarKilde([kort("kort-aaaa"), kort("kort-bbbb")])
+        let m = NaaModell(kilde: kilde, send: { _, _ in .avgjort }, autentisering: Bestemt(utfall: .ok))
+        await m.last()
+        let a = try #require(m.skjerm?.godkjenninger.first { $0.id == "kort-aaaa" })
+        let b = try #require(m.skjerm?.godkjenninger.first { $0.id == "kort-bbbb" })
+        kilde.hold()
+        m.velg(try #require(a.godkjenn))
+        let flyt = Task { await m.svar?.bekreft() }
+        await vent { kilde.erVentende }
+        m.velg(try #require(b.godkjenn))
+        kilde.sett(feiler: false, kort: [kort("kort-bbbb")])
+        kilde.slipp()
+        await flyt.value
+        #expect(m.feil == nil)
+        #expect(m.skjerm?.godkjenninger.map(\.id) == ["kort-bbbb"], "serverens liste")
+        #expect(ider(m) == ["kort-bbbb"])
+        #expect(m.svar?.kvittering?.forespørsel.kortId == "kort-aaaa")
+    }
+
+    /// 409 («allerede avgjort») skjuler kortet likt, også når oppfriskningen feiler.
+    @Test func alleredeAvgjort409SkjulerKortetLikt() async throws {
+        let kilde = StyrbarKilde([kort("kort-aaaa"), kort("kort-bbbb")])
+        let m = NaaModell(
+            kilde: kilde, send: { _, _ in .alleredeAvgjort("kortet er allerede avslått") }, autentisering: Bestemt(utfall: .ok)
+        )
+        await m.last()
+        let a = try #require(m.skjerm?.godkjenninger.first { $0.id == "kort-aaaa" })
+        kilde.sett(feiler: true)
+        m.velg(a.avslaa)
+        await m.svar?.bekreft()
+        #expect(ider(m) == ["kort-bbbb"])
+        #expect(m.svar?.tilstand == .feil(.alleredeAvgjort("kortet er allerede avslått")))
+        #expect(m.svar?.kvittering == nil)
+    }
+}
+
 @MainActor @Suite struct GodkjennModellTests {
     private func modell(_ demo: DemoAvgjort = DemoAvgjort(), aut: AutentiseringsUtfall = .ok) -> NaaModell {
         let t = KildeValg.demo(rolig: false).lagTilgang(demo: demo)

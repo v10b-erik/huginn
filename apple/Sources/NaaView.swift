@@ -79,10 +79,10 @@ struct NaaView: View {
         }
         .onChange(of: arkData, initial: true) { _, ny in ark = ny }
         // Kvitteringen er en stille bekreftelse som står til neste interaksjon (nytt valg), eller i 30 sekunder.
-        .task(id: ferdigKortId) {
-            guard ferdigKortId != nil else { return }
+        .task(id: modell.svar?.kvittering?.tid) {
+            guard modell.svar?.kvittering != nil else { return }
             try? await Task.sleep(for: .seconds(30))
-            if !Task.isCancelled, ferdigKortId != nil { modell.lukkSvar() }
+            if !Task.isCancelled { modell.svar?.lukkKvittering() }
         }
         #if DEBUG
         // Synsløkken: `--auto-svar=godkjenn|avslaa` åpner bekreftelsen for første kort, `--auto-bekreft` trykker bekreft.
@@ -217,6 +217,16 @@ struct NaaView: View {
 
     /// Raden over kortene: feil/usikkerhet som avviksrad, eller en stille kvittering.
     @ViewBuilder private var svarRad: some View {
+        if let k = modell.svar?.kvittering {
+            let f = k.forespørsel
+            SvarRad(
+                innhold: .kvittering(
+                    ord: "\(f.valg.erAvslag ? "Avslått" : "Godkjent") \(Tid.hhmm(k.tid, kalender: .current))",
+                    tekst: f.valg.key == "approve" || f.valg.erAvslag ? f.forsteLinje : "\(f.forsteLinje) · \(f.valg.etikett)"
+                ),
+                onOppdater: {}, onLukk: { modell.svar?.lukkKvittering() }
+            )
+        }
         switch modell.svar?.tilstand {
         case .usikker(let f)?:
             // Mens kortet står der, bor usikkerheten INNE i kortet. Er kortet allerede borte, står den her.
@@ -236,23 +246,9 @@ struct NaaView: View {
                 onOppdater: { Task { await modell.oppdaterEtterSvar() } }, onLukk: { modell.lukkSvar() },
                 onKobleTilPaaNytt: onKobleTilPaaNytt
             )
-        case .ferdig(let f)?:
-            let kl = Tid.hhmm(modell.svar?.sistFerdig ?? Date(), kalender: .current)
-            SvarRad(
-                innhold: .kvittering(
-                    ord: "\(f.valg.erAvslag ? "Avslått" : "Godkjent") \(kl)",
-                    tekst: f.valg.key == "approve" || f.valg.erAvslag ? f.forsteLinje : "\(f.forsteLinje) · \(f.valg.etikett)"
-                ),
-                onOppdater: {}, onLukk: { modell.lukkSvar() }
-            )
         default:
             EmptyView()
         }
-    }
-
-    private var ferdigKortId: String? {
-        if case .ferdig(let f)? = modell.svar?.tilstand { return f.kortId }
-        return nil
     }
 
     /// Det bekreftelsen viser nå. `nil` utenfor `.bekrefter`/`.autentiserer`.

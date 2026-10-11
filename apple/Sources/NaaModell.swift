@@ -11,10 +11,9 @@ final class NaaModell {
     /// Når siste henting lyktes (til tilkoblingsarket: «siste kontakt»).
     private(set) var sisteKontakt: Date?
     private let kilde: any NaaKilde
-    /// Skriveveien (Godkjenn/Avslå). `nil` = ingen: brikkens knapper er deaktiverte.
+    /// Skriveveien (Godkjenn/Avslå). `nil` = ingen skrivevei: brikken har da ingen knapper («Venter på svar» står i stedet),
+    /// ikke deaktiverte. Skjer ikke i appen (RotView gir alltid autentisering); finnes for tester og forhåndsvisninger.
     private(set) var svar: SvarTjeneste?
-    /// Kort Erik har avgjort i denne økten og som ikke skal vises igjen, selv om oppfriskningen etterpå feilet.
-    private var avgjorte: Set<String> = []
 
     init(kilde: any NaaKilde, send: SvarTjeneste.Send? = nil, autentisering: (any Autentisering)? = nil) {
         self.kilde = kilde
@@ -28,8 +27,8 @@ final class NaaModell {
     /// Skjermen slik den tegnes: uten kort som allerede er avgjort her.
     var synligSkjerm: NaaSkjerm? {
         guard var s = skjerm else { return nil }
-        var skjult = avgjorte
-        if case .ferdig(let f)? = svar?.tilstand { skjult.insert(f.kortId) }
+        // Kort serveren har avgjort vises ikke igjen, selv om oppfriskningen etterpå feilet (tjenesten fører listen).
+        let skjult = svar?.avgjorte ?? []
         s.godkjenninger.removeAll { skjult.contains($0.id) }
         return s
     }
@@ -47,10 +46,7 @@ final class NaaModell {
     /// at visningen forsvinner midt i en forsendelse (da ville vi ikke vite hva som skjedde).
     func bekreftSvar() {
         guard let svar else { return }
-        Task { [weak self] in
-            await svar.bekreft()
-            if case .ferdig(let f) = svar.tilstand { self?.avgjorte.insert(f.kortId) }
-        }
+        Task { await svar.bekreft() }
     }
 
     func lukkSvar() { svar?.lukk() }
