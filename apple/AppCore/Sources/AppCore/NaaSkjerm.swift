@@ -30,17 +30,28 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var valg: Valg
         /// Handlingsnøkkelen serveren ga (`approve`/`deny`); standard når kortet ikke lister dem.
         public var key: String
-        /// Kortets etikett for handlingen («Godkjenn» for `approve`): det brukeren ser og bekrefter.
-        public var label: String
-        /// Kortets etikett for handlingen, renset (bare inne i anførselstegn etter «Godkjenn»).
-        public var etikett: String
+        /// Det brukeren ser: «Godkjenn», `Godkjenn «<etikett>»` eller «Avslå». Utledet fra `Svarvalg`, aldri satt fra en rå
+        /// etikett utenfra: `private(set)`, og den eneste veien inn med en annen nøkkel enn `approve`/`deny` er `Svarvalg`.
+        public private(set) var label: String
+        /// Kortets etikett, renset (bare inne i anførselstegn etter «Godkjenn»).
+        public private(set) var etikett: String
 
-        public init(kortId: String, valg: Valg, key: String, label: String? = nil, etikett: String? = nil) {
+        /// Godkjenn/Avslå uten kortets egen etikett (`label` er «Godkjenn» eller «Avslå»).
+        public init(kortId: String, valg: Valg, key: String) {
             self.kortId = kortId
             self.valg = valg
             self.key = key
-            self.label = label ?? (valg == .godkjenn ? "Godkjenn" : "Avslå")
-            self.etikett = etikett ?? self.label
+            self.label = valg == .godkjenn ? "Godkjenn" : "Avslå"
+            self.etikett = self.label
+        }
+
+        /// Den ene veien inn for en handling med kortets etikett: den kommer renset fra `Svarvalg`.
+        init(kortId: String, valg: Valg, svarvalg: Svarvalg) {
+            self.kortId = kortId
+            self.valg = valg
+            self.key = svarvalg.key
+            self.label = svarvalg.label
+            self.etikett = svarvalg.etikett
         }
     }
 
@@ -159,7 +170,7 @@ public struct NaaSkjerm: Sendable, Equatable {
                 kildeRen: nil,
                 klasse: nil,
                 opprettet: kort.createdAt,
-                godkjenn: Svarvalg.godkjenn(actions: kort.actions).map { Handling(kortId: kort.id, valg: .godkjenn, key: $0.key, label: $0.label, etikett: $0.etikett) },
+                godkjenn: Svarvalg.godkjenn(actions: kort.actions).map { Handling(kortId: kort.id, valg: .godkjenn, svarvalg: $0) },
                 avslaa: Handling(kortId: kort.id, valg: .avslaa, key: Svarvalg.avslaa.key)
             )
         }

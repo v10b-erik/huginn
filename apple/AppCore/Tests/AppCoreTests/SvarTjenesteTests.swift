@@ -301,6 +301,53 @@ final class Teller: @unchecked Sendable {
         #expect(t.tilstand == .feil(.ugyldigKort))
     }
 
+    // MARK: - N1: et avgjort kort kan ikke tapes av rekkefølgen
+
+    @Test func avgjortKortFøresISammeØyeblikketSvaretKommer_ogKvitteringenOverlevernyttValg() async {
+        let aut = FakeAutentisering(.ok), send = FakeSend()
+        let oppfriskHold = FakeSend(holdes: true)  // gjenbruker «hold til slipp» som oppfriskningens port
+        let t = SvarTjeneste(
+            autentisering: aut, send: { try await send.send(kortId: $0, key: $1) },
+            oppfrisk: { _ = try? await oppfriskHold.send(kortId: "x", key: "x") }
+        )
+        t.velg(godkjenn)
+        let flyt = Task { await t.bekreft() }
+        await vent { oppfriskHold.erVentende }
+        // Oppfriskningen pågår. Avgjørelsen er allerede ført, og kvitteringen står.
+        #expect(t.avgjorte == [godkjenn.kortId])
+        #expect(t.kvittering?.forespørsel == godkjenn)
+        // Et nytt valg (kvitteringen låser ingenting) bytter tilstand, men taper hverken avgjort-listen eller kvitteringen.
+        t.velg(Svar.Forespørsel(kortId: "kort-nummer-b", tekst: "B", valg: Svarvalg(key: "approve", label: "Godkjenn")))
+        guard case .bekrefter = t.tilstand else { Issue.record("ventet .bekrefter"); return }
+        oppfriskHold.slipp()
+        await flyt.value
+        #expect(t.avgjorte == [godkjenn.kortId])
+        #expect(t.kvittering?.forespørsel == godkjenn)
+        t.lukkKvittering()
+        #expect(t.kvittering == nil && t.avgjorte == [godkjenn.kortId], "å lukke kvitteringen angrer ikke avgjørelsen")
+    }
+
+    @Test func alleredeAvgjort409FøresOgSåSkjules() async {
+        let t = tjeneste(FakeAutentisering(), FakeSend(.utfall(.alleredeAvgjort("kortet er allerede avgjort"))))
+        t.velg(avslå)
+        await t.bekreft()
+        #expect(t.avgjorte == [avslå.kortId])
+        #expect(t.kvittering == nil, "ingen «godkjent»-kvittering for noe vi ikke avgjorde")
+    }
+
+    @Test func ingenAvgjortVedUsikkertFeilEllerAvbrutt() async {
+        for send in [FakeSend(.feil(.nettverk("x"))), FakeSend(.utfall(.ugyldigValg)), FakeSend(.utfall(.ukjentKort)), FakeSend(.feil(.ikkeInnlogget))] {
+            let t = tjeneste(FakeAutentisering(), send)
+            t.velg(avslå)
+            await t.bekreft()
+            #expect(t.avgjorte.isEmpty && t.kvittering == nil)
+        }
+        let t = tjeneste(FakeAutentisering(.avbrutt), FakeSend())
+        t.velg(godkjenn)
+        await t.bekreft()
+        #expect(t.avgjorte.isEmpty && t.kvittering == nil)
+    }
+
     @Test func kvitteringenFårKlokkeslettFraInjisertKlokke() async {
         let tid = Date(timeIntervalSince1970: 1_760_000_000)
         let t = SvarTjeneste(autentisering: FakeAutentisering(), send: { _, _ in .avgjort }, oppfrisk: {}, nå: { tid })

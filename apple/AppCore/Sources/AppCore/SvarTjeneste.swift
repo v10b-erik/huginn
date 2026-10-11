@@ -11,8 +11,21 @@ public final class SvarTjeneste {
     public typealias Oppfrisk = @MainActor @Sendable () async -> Void
 
     public private(set) var svar = Svar()
-    /// Når siste avgjørelse ble registrert (til kvitteringen).
-    public private(set) var sistFerdig: Date?
+    /// Kvittering for siste registrerte avgjørelse. Eget felt, ikke tilstanden: et nytt valg (kvitteringen låser ingenting)
+    /// bytter tilstand, men kvitteringen står til den lukkes.
+    public struct Kvittering: Sendable, Equatable {
+        public var forespørsel: Svar.Forespørsel
+        public var tid: Date
+    }
+
+    public private(set) var kvittering: Kvittering?
+    /// Kort serveren har registrert som avgjort (eller sa var det) i denne økten. Settes i det øyeblikket svaret kommer,
+    /// synkront, før oppfriskningen og uavhengig av hva som velges etterpå: et avgjort kort kan ikke tapes av rekkefølgen.
+    public private(set) var avgjorte: Set<String> = []
+
+    public var sistFerdig: Date? { kvittering?.tid }
+
+    public func lukkKvittering() { kvittering = nil }
 
     @ObservationIgnored private let autentisering: any Autentisering
     @ObservationIgnored private let send: Send
@@ -64,7 +77,16 @@ public final class SvarTjeneste {
                     resultat = .feil(.nettverk("ukjent feil"))
                 }
                 kommando = svar.resultat(id: forsøk.id, resultat)
-                if case .ferdig = svar.tilstand { sistFerdig = nå() }
+                if kommando == .oppfrisk {
+                    switch svar.tilstand {
+                    case .ferdig(let f) where f == forsøk.forespørsel:
+                        avgjorte.insert(f.kortId)
+                        kvittering = Kvittering(forespørsel: f, tid: nå())
+                    case .feil(.alleredeAvgjort):
+                        avgjorte.insert(forsøk.forespørsel.kortId)
+                    default: break
+                    }
+                }
             case .oppfrisk:
                 await oppfrisk()
                 kommando = .ingenting

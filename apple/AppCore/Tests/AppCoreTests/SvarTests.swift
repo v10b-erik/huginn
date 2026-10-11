@@ -93,7 +93,7 @@ import Testing
 
     @Test func godkjennKommerBareTilSenderEtterOk() {
         var s = ibekreftelse(godkjenn)
-        guard case .autentiser(let f) = s.bekreft() else { return }
+        guard case .autentiser(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         let k = s.autentisert(id: f.id, utfall: .ok)
         guard case .send(let sendt) = k else { Issue.record("ventet send"); return }
         #expect(sendt.autentisert)
@@ -103,7 +103,7 @@ import Testing
     @Test(arguments: [AutentiseringsUtfall.avbrutt, .utilgjengelig, .feilet])
     func autentiseringSomIkkeLykkesSenderIngenting(utfall: AutentiseringsUtfall) {
         var s = ibekreftelse(godkjenn)
-        guard case .autentiser(let f) = s.bekreft() else { return }
+        guard case .autentiser(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.autentisert(id: f.id, utfall: utfall) == .ingenting)
         if case .sender = s.tilstand { Issue.record("kom til .sender uten autentisering") }
         switch utfall {
@@ -116,11 +116,11 @@ import Testing
 
     @Test func autentiseringsSvarForGammeltForsøkIgnoreres() {
         var s = ibekreftelse(godkjenn)
-        guard case .autentiser(let gammel) = s.bekreft() else { return }
+        guard case .autentiser(let gammel) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         s.lukk()  // brukeren avbryter mens systemdialogen er oppe
         #expect(s.tilstand == .ingen)
         s.velg(forespørsel(godkjenn))
-        guard case .autentiser(let ny) = s.bekreft() else { return }
+        guard case .autentiser(let ny) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(ny.id != gammel.id)
         // Det gamle forsøkets «ok» kommer for sent og skal ikke sende noe.
         #expect(s.autentisert(id: gammel.id, utfall: .ok) == .ingenting)
@@ -175,7 +175,7 @@ import Testing
 
     @Test func nyttValgMensDetSendesIgnoreres() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         s.velg(forespørsel(godkjenn, id: "annet-kort-1"))
         s.velg(forespørsel(.avslaa))
         guard case .sender(let nå) = s.tilstand else { Issue.record("skulle fortsatt sende"); return }
@@ -200,7 +200,7 @@ import Testing
 
     @Test func resultatForGammeltForsøkEllerAnnetKortIgnoreres() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id + 1, .utfall(.avgjort)) == .ingenting)
         #expect(s.resultat(id: f.id - 1, .utfall(.avgjort)) == .ingenting)
         guard case .sender = s.tilstand else { Issue.record("skulle fortsatt sende"); return }
@@ -213,11 +213,11 @@ import Testing
 
     @Test func resultatMedForsøksIdFraEtAnnetKortIgnoreres() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let a) = s.bekreft() else { return }
+        guard case .send(let a) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         _ = s.resultat(id: a.id, .utfall(.avgjort))
         s.lukk()
         s.velg(forespørsel(.avslaa, id: "kort-nummer-to"))
-        guard case .send(let b) = s.bekreft() else { return }
+        guard case .send(let b) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: a.id, .utfall(.avgjort)) == .ingenting, "svaret for kort 1 gjelder ikke kort 2")
         guard case .sender(let nå) = s.tilstand else { Issue.record("kort 2 skulle fortsatt sende"); return }
         #expect(nå.forespørsel.kortId == "kort-nummer-to" && nå.id == b.id)
@@ -227,7 +227,7 @@ import Testing
 
     @Test func avgjortGirFerdigOgEnOppfriskning() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id, .utfall(.avgjort)) == .oppfrisk)
         #expect(s.tilstand == .ferdig(f.forespørsel))
         #expect(s.kanSvare)
@@ -239,7 +239,7 @@ import Testing
             (.ukjentKort, .ukjentKort),
         ] {
             var s = ibekreftelse(.avslaa)
-            guard case .send(let f) = s.bekreft() else { return }
+            guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
             #expect(s.resultat(id: f.id, .utfall(utfall)) == .oppfrisk)
             #expect(s.tilstand == .feil(forventet))
         }
@@ -247,14 +247,14 @@ import Testing
 
     @Test func ugyldigValgGirFeilUtenOppfriskning() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id, .utfall(.ugyldigValg)) == .ingenting)
         #expect(s.tilstand == .feil(.ugyldigValg))
     }
 
     @Test func ikkeInnloggetGirKreverNyttToken() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id, .feil(.ikkeInnlogget)) == .ingenting)
         #expect(s.tilstand == .feil(.kreverNyttToken))
         #expect(SvarFeil.kreverNyttToken.kreverNyttToken)
@@ -263,7 +263,7 @@ import Testing
     @Test(arguments: [TraadflataFeil.nettverk("tidsavbrudd"), .ugyldigSvar, .http(status: 500, melding: nil), .http(status: 502, melding: nil), .http(status: 504, melding: nil)])
     func svarUtenSvarErUsikkertOgOppfriskerBareEnGang(feil: TraadflataFeil) {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id, .feil(feil)) == .oppfrisk, "ny HENTING, aldri ny forsendelse")
         #expect(s.tilstand == .usikker(f.forespørsel))
         // En ny forsendelse krever kvittering først.
@@ -277,7 +277,7 @@ import Testing
 
     @Test func serverensAvvisningUnder500ErIkkeRegistrert() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.resultat(id: f.id, .feil(.http(status: 403, melding: "annet opphav"))) == .ingenting)
         #expect(s.tilstand == .feil(.ikkeRegistrert(status: 403)))
     }
@@ -328,7 +328,7 @@ import Testing
 
     @Test func sikkerhetsstoppGirEnFeilSomKanForlates() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         s.stopp(id: f.id + 1)
         guard case .sender = s.tilstand else { Issue.record("stopp for et annet forsøk skal ignoreres"); return }
         s.stopp(id: f.id)
@@ -408,6 +408,23 @@ import Testing
         #expect(Svarvalg(key: "\u{202E}", label: "").etikett == "valg", "også en tom nøkkel gir noe å vise")
     }
 
+    @Test func linjeskiftBlirEttMellomromOgUsynligeBokstavtegnForsvinner() {
+        #expect(Svarvalg(key: "x", label: "Send\nAvslå").etikett == "Send Avslå", "linjeskift forsvinner ikke")
+        #expect(Svarvalg(key: "x", label: "Send\r\n\t Avslå").etikett == "Send Avslå")
+        #expect(Svarvalg(key: "x", label: "Se\u{3164}nd").etikett == "Send", "hangul filler")
+        #expect(Svarvalg(key: "x", label: "\u{115F}\u{1160}Send\u{FFA0}").etikett == "Send")
+        #expect(Svarvalg(key: "send", label: "\u{3164}\u{3164}").etikett == "send", "bare usynlige tegn: nøkkelen")
+        #expect(Svarvalg(key: "x", label: "Send\u{2028}Avslå").label == "Godkjenn «Send Avslå»")
+    }
+
+    @Test func enHandlingBygdUtenomSvarvalgViserAldriEnRåEtikett() {
+        let h = NaaSkjerm.Handling(kortId: "kort-0001", valg: .godkjenn, key: "send")
+        #expect(h.label == "Godkjenn" && h.etikett == "Godkjenn")
+        #expect(NaaSkjerm.Handling(kortId: "kort-0001", valg: .avslaa, key: "deny").label == "Avslå")
+        let g = skjermMed(kort([.init(key: "send", label: "\u{202E}✉️ Send"), .init(key: "deny", label: "Nei")]))
+        #expect(g.godkjenn?.label == "Godkjenn «Send»" && g.avslaa.label == "Avslå" && g.avslaa.etikett == "Avslå")
+    }
+
     @Test func langEtikettKuttesMedTrepunktum() {
         let v = Svarvalg(key: "x", label: String(repeating: "a", count: 80))
         #expect(v.etikett.count == 24 && v.etikett.hasSuffix("…"))
@@ -436,7 +453,7 @@ import Testing
 
     @Test func kvitteringenLåserIkkeAndreKort() {
         var s = ibekreftelse(.avslaa)
-        guard case .send(let f) = s.bekreft() else { return }
+        guard case .send(let f) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.knapper(for: "demo-alarm") == .sender(f.forespørsel))
         #expect(s.knapper(for: "annet-kort-1") == .av, "andre kort er av mens noe sendes")
         _ = s.resultat(id: f.id, .utfall(.avgjort))
@@ -449,7 +466,7 @@ import Testing
 
     @Test func usikkerOgAutentiseringSlårAvAndreKort() {
         var s = ibekreftelse(godkjenn)
-        guard case .autentiser(let fo) = s.bekreft() else { return }
+        guard case .autentiser(let fo) = s.bekreft() else { Issue.record("forutsetningen holdt ikke"); return }
         #expect(s.knapper(for: "annet-kort-1") == .av)
         _ = s.autentisert(id: fo.id, utfall: .ok)
         _ = s.resultat(id: fo.id, .feil(.nettverk("x")))

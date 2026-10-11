@@ -50,18 +50,24 @@ public struct Svarvalg: Sendable, Equatable {
     /// Blir den tom, brukes nøkkelen (renset og kuttet på samme måte).
     public static func rens(_ tekst: String, nøkkel: String) -> String {
         func grunn(_ s: String) -> String {
-            let skalarer = s.unicodeScalars.filter { sk in
+            // Blanke tegn (også linjeskift) blir ETT mellomrom; usynlige tegn forsvinner: kontroll og format (retningstegn,
+            // nullbredde), og alt Unicode regner som «ikke tegnes» (hangul filler U+3164/U+115F/U+1160/U+FFA0 m.fl.).
+            var ut = String.UnicodeScalarView()
+            for sk in s.unicodeScalars {
+                if sk.properties.isWhitespace { ut.append(" "); continue }
                 switch sk.properties.generalCategory {
-                case .control, .format: return false
-                default: return sk != "«" && sk != "»"
+                case .control, .format: continue
+                default: break
                 }
+                if sk.properties.isDefaultIgnorableCodePoint || sk == "«" || sk == "»" { continue }
+                ut.append(sk)
             }
-            return String(String.UnicodeScalarView(skalarer)).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            return String(ut).split(whereSeparator: \.isWhitespace).joined(separator: " ")
         }
         func erSymbol(_ sk: Unicode.Scalar) -> Bool {
             switch sk.properties.generalCategory {
             case .otherSymbol, .mathSymbol, .currencySymbol, .modifierSymbol, .enclosingMark: return true
-            default: return (0xFE00...0xFE0F).contains(sk.value)  // variasjonsvelgere (✉️)
+            default: return false
             }
         }
         func kutt(_ s: String) -> String {
