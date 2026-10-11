@@ -230,7 +230,7 @@ extension TilkoblingsFeil {
         case .ikkeInnlogget: .ikkeInnlogget
         case .nettverk: .ikkeNaabar
         case .http(let status, _): .tjenesteFeil(status: status)
-        case .dekoding, .ugyldigSvar: .svarIkkeForstaatt
+        case .dekoding, .ugyldigSvar, .ugyldigKortId: .svarIkkeForstaatt
         }
     }
 }

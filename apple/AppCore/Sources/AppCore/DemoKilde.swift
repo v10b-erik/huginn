@@ -17,8 +17,12 @@ public struct DemoKilde: NaaKilde {
     private let variant: Variant
     private let nå: @Sendable () -> Date
     private let kalender: Calendar
+    private let avgjort: DemoAvgjort?
 
-    public init(variant: Variant = .avvik, nå: @escaping @Sendable () -> Date = { Date() }, kalender: Calendar = .current) {
+    /// - Parameter avgjort: demoens lokale «server»; kort den har avgjort (og deres «venter»-avvik) vises ikke lenger.
+    public init(variant: Variant = .avvik, nå: @escaping @Sendable () -> Date = { Date() }, kalender: Calendar = .current,
+                avgjort: DemoAvgjort? = nil) {
+        self.avgjort = avgjort
         self.variant = variant
         self.nå = nå
         self.kalender = kalender
@@ -86,16 +90,20 @@ public struct DemoKilde: NaaKilde {
         }
         let trening = treffer(18, 0, etter: nå)
         let standup = treffer(8, 30, etter: nå, ukedag: 2)  // mandag
+        let lang = avgjort?.langtKort == true
+        let beskrivelse = lang ? DemoAvgjort.langTekst : "Armere alarmen"
+        let mal = lang ? DemoAvgjort.langTekstForsteLinje : "Armere alarmen"
+        let alarmAvgjort = avgjort?.erAvgjort("demo-alarm") == true
         let avvik: [NaaAvvik] = variant == .rolig ? [] : [
             NaaAvvik(art: "jobb", navn: "hermod-backup", tekst: "siste kjøring 03:10",
                      ts: treffer(3, 10, etter: nå.addingTimeInterval(-86_400)), lenke: nil),
             // Serveren sender også godkjenningen som «venter»-avvik (mission-feed.ts), med målet som tekst.
             // Den er samme sak som kortet og skal ikke telles to ganger.
-            NaaAvvik(art: "venter", navn: "armere-alarmen", tekst: "Armere alarmen",
+            NaaAvvik(art: "venter", navn: "armere-alarmen", tekst: mal,
                      ts: nå.addingTimeInterval(-(3 * min + 12)), lenke: nil),
-        ]
-        let kort: [NaaKort] = variant == .rolig ? [] : [
-            NaaKort(id: "demo-alarm", name: "alarm", describe: "Armere alarmen", status: "pending",
+        ].filter { !(alarmAvgjort && $0.art == "venter") }
+        let kort: [NaaKort] = variant == .rolig || alarmAvgjort ? [] : [
+            NaaKort(id: "demo-alarm", name: "alarm", describe: beskrivelse, status: "pending",
                     expiresAt: nil, createdAt: nå.addingTimeInterval(-(3 * min + 12)), agent: nil,
                     threadKey: "kode:v10b:ajax-fix",
                     actions: [.init(key: "approve", label: "Godkjenn"), .init(key: "deny", label: "Avslå")])

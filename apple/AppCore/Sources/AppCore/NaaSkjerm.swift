@@ -144,9 +144,7 @@ public struct NaaSkjerm: Sendable, Equatable {
         heroUndertekst = Self.heroUndertekst(kort: ventendeKort.count, venter: ventendeAvvik.count)
 
         godkjenninger = ventendeKort.map { kort in
-            func nøkkel(_ ønsket: String) -> String {
-                kort.actions?.first { $0.key == ønsket }?.key ?? ønsket
-            }
+            // Godkjenn = kortets `approve` (eller dets første handling); Avslå er alltid `deny` (serveren tar den uansett).
             return Godkjenning(
                 id: kort.id,
                 tittel: kort.describe ?? kort.name ?? "Godkjenning",
@@ -154,8 +152,8 @@ public struct NaaSkjerm: Sendable, Equatable {
                 kildeRen: nil,
                 klasse: nil,
                 opprettet: kort.createdAt,
-                godkjenn: Handling(kortId: kort.id, valg: .godkjenn, key: nøkkel("approve")),
-                avslaa: Handling(kortId: kort.id, valg: .avslaa, key: nøkkel("deny"))
+                godkjenn: Handling(kortId: kort.id, valg: .godkjenn, key: Svarvalg.godkjenn(actions: kort.actions).key),
+                avslaa: Handling(kortId: kort.id, valg: .avslaa, key: Svarvalg.avslaa.key)
             )
         }
 
@@ -418,5 +416,17 @@ public struct NaaSkjerm: Sendable, Equatable {
                 tid: Tid.dagOgTid(k.ts, nå: nå, heleDagen: k.heleDagen, kalender: kalender)
             )
         }
+    }
+}
+
+extension NaaSkjerm.Godkjenning {
+    /// Brikkens knapp → det bekreftelsen skal vise. `nil` når handlingen gjelder et annet kort. Hele kortteksten
+    /// (`tittel` er `describe`) følger med, ikke bare første linje.
+    public func forespørsel(for handling: NaaSkjerm.Handling) -> Svar.Forespørsel? {
+        guard handling.kortId == id else { return nil }
+        let valg = handling.valg == .avslaa
+            ? Svarvalg.avslaa
+            : Svarvalg(key: handling.key, label: "Godkjenn")
+        return Svar.Forespørsel(kortId: id, tekst: tittel, valg: valg)
     }
 }

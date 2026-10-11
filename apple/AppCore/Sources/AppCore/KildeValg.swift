@@ -75,6 +75,63 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
         return false
     }
 
+    /// `--demo-svar=<avgjort|henger|usikkert|alleredeAvgjort>` og `--demo-lang` (synsløkka, bare DEBUG): hva demoens
+    /// lokale «server» svarer på Godkjenn/Avslå, og om kortet har en lang tekst. Utenfor DEBUG (`tillatLive == false`)
+    /// alltid standard.
+    public static let demoSvarPrefiks = "--demo-svar="
+    public static let demoLang = "--demo-lang"
+    /// `--auto-godkjenn` (synsløkka, bare DEBUG): erstatter lokal autentisering med en som alltid lykkes, så flyten kan
+    /// kjøres på simulator uten biometri. Skal aldri ha noen virkning i release.
+    public static let autoGodkjenn = "--auto-godkjenn"
+    /// `--auto-svar=<godkjenn|avslaa>` (synsløkka, bare DEBUG): åpner bekreftelsen for første kort ved start.
+    public static let autoSvarPrefiks = "--auto-svar="
+    /// `--auto-bekreft` (synsløkka, bare DEBUG): trykker bekreft i bekreftelsen som `--auto-svar` åpnet.
+    public static let autoBekreft = "--auto-bekreft"
+
+    public static func demoAvgjort(argumenter: [String], tillatLive: Bool) -> DemoAvgjort {
+        guard tillatLive else { return DemoAvgjort() }
+        let atferd = argumenter.first { $0.hasPrefix(demoSvarPrefiks) }
+            .flatMap { DemoAvgjort.Atferd(rawValue: String($0.dropFirst(demoSvarPrefiks.count))) } ?? .avgjort
+        return DemoAvgjort(atferd: atferd, langtKort: argumenter.contains(demoLang))
+    }
+
+    public static func brukerAutoGodkjenn(argumenter: [String], tillatLive: Bool) -> Bool {
+        tillatLive && argumenter.contains(autoGodkjenn)
+    }
+
+    /// `godkjenn` eller `avslaa`, eller `nil`.
+    public static func autoSvar(argumenter: [String], tillatLive: Bool) -> NaaSkjerm.Handling.Valg? {
+        guard tillatLive, let a = argumenter.first(where: { $0.hasPrefix(autoSvarPrefiks) }) else { return nil }
+        switch a.dropFirst(autoSvarPrefiks.count) {
+        case "godkjenn": return .godkjenn
+        case "avslaa": return .avslaa
+        default: return nil
+        }
+    }
+
+    public static func brukerAutoBekreft(argumenter: [String], tillatLive: Bool) -> Bool {
+        tillatLive && argumenter.contains(autoBekreft)
+    }
+
+    /// Kilden og skriveveien til «Nå», bygget sammen så de deler tilstand (demo: hva som er avgjort).
+    public struct Tilgang: Sendable {
+        public var kilde: any NaaKilde
+        public var send: SvarTjeneste.Send
+    }
+
+    public func lagTilgang(demo: DemoAvgjort = DemoAvgjort()) -> Tilgang {
+        switch self {
+        case .demo(let rolig, let ekte):
+            return Tilgang(
+                kilde: DemoKilde(variant: ekte ? .ekte : (rolig ? .rolig : .avvik), avgjort: demo),
+                send: { try await demo.svar(kortId: $0, key: $1) }
+            )
+        case .live(let url, let token):
+            let klient = TraadflataKlient(baseURL: url, token: token)
+            return Tilgang(kilde: LiveKilde(klient: klient), send: { try await klient.svar(kortId: $0, key: $1) })
+        }
+    }
+
     public func lagKilde() -> any NaaKilde {
         switch self {
         case .demo(let rolig, let ekte): DemoKilde(variant: ekte ? .ekte : (rolig ? .rolig : .avvik))
