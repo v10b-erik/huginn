@@ -44,37 +44,56 @@ struct Listebrikke: View {
 private struct RadView: View {
     var rad: NaaSkjerm.Rad
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(alignment: .center, spacing: Theme.Avstand.s3) {
             Circle().fill(lampefarge(rad.tone, p)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
                 .frame(width: 14, alignment: .leading)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(rad.tittel).skrift(.tekst)
-                    .foregroundStyle(Color(p.tekst))
-                    .lineLimit(2).truncationMode(.tail)
-                if let u = rad.undertekst {
-                    // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN, så halen som
-                    // skiller håndtak fra hverandre (`…-eksempel-12`) blir stående. Annen undertekst kuttes i halen.
-                    Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
-                        .lineLimit(rad.undertekstLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+            if typeSize.isAccessibilitySize {
+                // Tilgjengelighetsstørrelser: ord og tid ville tatt hele bredden og klemt teksten til noen få tegn.
+                // Da står de under teksten, venstrestilt.
+                VStack(alignment: .leading, spacing: Theme.Avstand.s2) {
+                    tekst(p)
+                    HStack(spacing: Theme.Avstand.s3) { status(p) }
                 }
-            }
-            Spacer(minLength: Theme.Avstand.s2)
-            if let ord = rad.ord {
-                // Tilstandsordet (regel 4) får plass FØR teksten til venstre (layoutPriority), som er den som kuttes.
-                // Ikke `fixedSize`: ved tilgjengelighetsstørrelser på smal skjerm ville minstebredden sprengt brikken.
-                Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
-                    .lineLimit(1).layoutPriority(1)
-            }
-            if let tid = rad.tid {
-                Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
-                    .lineLimit(1).layoutPriority(1)
+                Spacer(minLength: 0)
+            } else {
+                tekst(p)
+                Spacer(minLength: Theme.Avstand.s2)
+                status(p)
             }
         }
         .padding(.vertical, Theme.Avstand.s3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(rad.talesTekst)
+    }
+
+    private func tekst(_ p: Theme.Palette) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(rad.tittel).skrift(.tekst)
+                .foregroundStyle(Color(p.tekst))
+                .lineLimit(2).truncationMode(.tail)
+            if let u = rad.undertekst {
+                // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN, så halen som
+                // skiller håndtak fra hverandre (`…-eksempel-12`) blir stående. Annen undertekst kuttes i halen.
+                Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                    .lineLimit(rad.undertekstLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+            }
+        }
+    }
+
+    @ViewBuilder private func status(_ p: Theme.Palette) -> some View {
+        if let ord = rad.ord {
+            // Tilstandsordet (regel 4) får plass FØR teksten til venstre (layoutPriority), som er den som kuttes.
+            // Ikke `fixedSize`: ved tilgjengelighetsstørrelser på smal skjerm ville minstebredden sprengt brikken.
+            Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
+                .lineLimit(1).layoutPriority(1)
+        }
+        if let tid = rad.tid {
+            Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
+                .lineLimit(1).layoutPriority(1)
+        }
     }
 }
