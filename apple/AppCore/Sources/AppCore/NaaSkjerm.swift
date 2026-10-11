@@ -63,6 +63,16 @@ public struct NaaSkjerm: Sendable, Equatable {
         /// Relativ tid («8 min»), når raden ikke har et tilstandsord.
         public var tid: String?
         public var tone: Tone
+        /// Hvor mange linjer undertekst får før den kuttes i halen. Håndtaket (`venter`-rader) er alltid én linje:
+        /// det er et token, og to linjer av det er bare støy.
+        public var undertekstLinjer: Int = 2
+        /// Overstyrer VoiceOver-teksten. `nil` = tittel, undertekst, tilstandsord og tid i den rekkefølgen.
+        public var tale: String?
+
+        /// Det VoiceOver leser opp.
+        public var talesTekst: String {
+            tale ?? [tittel, undertekst, ord?.lowercased(), tid].compactMap { $0 }.joined(separator: ", ")
+        }
     }
 
     /// En av de tre tallkolonnene.
@@ -149,9 +159,7 @@ public struct NaaSkjerm: Sendable, Equatable {
             )
         }
 
-        venter = ventendeAvvik.map {
-            Rad(id: $0.id, tittel: $0.navn, undertekst: $0.tekst, ord: "VENTER", tid: nil, tone: .aksent)
-        }
+        venter = ventendeAvvik.map { Self.venterRad(id: $0.id, navn: $0.navn, tekst: $0.tekst) }
 
         // avvik = alt som avviker unntatt det som bare venter på deg.
         let avvikene = naa.avvik.filter { $0.art != "venter" }
@@ -228,6 +236,32 @@ public struct NaaSkjerm: Sendable, Equatable {
         let valgt = linjer.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? tekst
         let trimmet = valgt.trimmingCharacters(in: .whitespacesAndNewlines)
         return String(decoding: Array(trimmet.utf16.prefix(200)), as: UTF16.self)
+    }
+
+    /// Det menneskelige målet slik raden viser det: første linje med innhold, all whitespace (mellomrom, tabulator,
+    /// linjeskift, nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold.
+    /// Ingen kutting her: viewet kutter i halen (`lineLimit`), så ingenting går tapt i modellen.
+    static func maal(_ tekst: String) -> String {
+        for linje in tekst.unicodeScalars.split(whereSeparator: { CharacterSet.newlines.contains($0) }) {
+            let ord = String(String.UnicodeScalarView(linje)).split(whereSeparator: \.isWhitespace)
+            if !ord.isEmpty { return ord.joined(separator: " ") }
+        }
+        return ""
+    }
+
+    /// «Venter på deg»-rad: tittelen er det menneskelige målet (`tekst`), håndtaket (`navn`, missionens maskinnavn)
+    /// er en liten mono-linje under, så man fortsatt ser hvilken mission det er. Er målet tomt eller bare blanke,
+    /// blir håndtaket tittel, og det vises ikke en gang til. Står håndtaket og målet likt, vises det heller ikke to ganger.
+    /// VoiceOver: «<mål>, venter», aldri håndtaket først.
+    static func venterRad(id: String, navn: String, tekst: String) -> Rad {
+        let mål = maal(tekst)
+        let håndtak = maal(navn)
+        let tittel = !mål.isEmpty ? mål : (!håndtak.isEmpty ? håndtak : "Uten navn")
+        let under: String? = (håndtak.isEmpty || håndtak == tittel) ? nil : håndtak
+        return Rad(
+            id: id, tittel: tittel, undertekst: under, ord: "VENTER", tid: nil, tone: .aksent,
+            undertekstLinjer: 1, tale: "\(tittel), venter"
+        )
     }
 
     private static func samsvarer(avvik: NaaAvvik, kort: NaaKort) -> Bool {

@@ -132,6 +132,15 @@ import Testing
         #expect(KildeValg.velg(argumenter: ["--demo-rolig"], miljo: [:], tillatLive: true) == .demo(rolig: true))
     }
 
+    @Test func demoEkteVelgesBareINåDebug() {
+        #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: [:], tillatLive: true) == .demo(rolig: false, ekte: true))
+        #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: miljo, tillatLive: true, lagret: lagret) == .demo(rolig: false, ekte: true))
+        #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: [:], tillatLive: false) == nil, "release ignorerer --demo-ekte")
+        #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: [:], tillatLive: false, lagret: lagret) == lagret.kildeValg)
+        #expect(KildeValg.demo(rolig: false, ekte: true).navn == "demo · ekte")
+        #expect(KildeValg.demo(rolig: false, ekte: true).erDemo)
+    }
+
     @Test func launchArgumentSlårMiljøOgLagret() {
         #expect(KildeValg.velg(argumenter: ["--demo"], miljo: miljo, tillatLive: true, lagret: lagret) == .demo(rolig: false))
         #expect(KildeValg.velg(argumenter: ["--demo-rolig"], miljo: miljo, tillatLive: false, lagret: lagret) == .demo(rolig: true))
@@ -168,6 +177,6 @@ import Testing
         let v = try #require(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: true))
         #expect(!v.description.contains("hemmelig") && !v.navn.contains("hemmelig"))
         #expect(!"\(v)".contains("hemmelig") && !String(reflecting: v).contains("hemmelig"))
-        #expect(v.navn == "live · ygg-v1.example")
+        #expect(v.navn == "live · ygg-v1", "bare første vertsledd i foten")
     }
 }

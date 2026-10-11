@@ -9,6 +9,9 @@ public struct DemoKilde: NaaKilde {
         case avvik
         /// Rolig dag: tallet er 0.
         case rolig
+        /// Ekte FORM, syntetisk innhold: lange mål med tekniske tokens, en lang kalendertittel, en heldagshendelse,
+        /// ingen kort. Finnes for at layouten kan sees og regresjonstestes uten ekte data (`--demo-ekte`).
+        case ekte
     }
 
     private let variant: Variant
@@ -34,7 +37,43 @@ public struct DemoKilde: NaaKilde {
         return s
     }
 
+    /// ALT her er syntetisk (`example.com`, `EXAMPLE`, oppdiktede navn). Ikke lim inn noe fra serveren eller fra skjermbilder.
+    /// Fixturen `naa-ekte-form.json` (AppCore-testene) speiler denne; en test sjekker at de gir samme skjerm.
+    static func ekteFormData(nå: Date, kalender: Calendar) -> (Naa, [Traad]) {
+        let min: TimeInterval = 60
+        let lang = "https://git.example.com/eksempel/app/pull/4?ref=EXAMPLE0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        let naa = Naa(
+            kort: [],
+            avvik: [
+                NaaAvvik(art: "venter", navn: "post-faktura-eksempel-7",
+                         tekst: "Faktura-varsel fra leverandør <varsler+acct_EXAMPLE12345678abcdef@example.com> trenger svar",
+                         ts: nå.addingTimeInterval(-(18 * min)), lenke: nil),
+                NaaAvvik(art: "venter", navn: "repo-utdatert-pr-eksempel-12",
+                         tekst: "Avklar utdatert pull request \(lang)",
+                         ts: nå.addingTimeInterval(-(95 * min)), lenke: nil),
+            ],
+            kalender: [
+                NaaKalenderHendelse(tittel: "Eksempeldag, ingen møter", kalender: nil,
+                                    ts: kalender.startOfDay(for: nå), heleDagen: true),
+                NaaKalenderHendelse(tittel: "Kvartalsgjennomgang og planlegging av eksempelprosjektet med hele teamet i Eksempel AS, Nordlys",
+                                    kalender: nil, ts: nå.addingTimeInterval(110 * min), heleDagen: false),
+            ]
+        )
+        return (naa, ekteFormTraader(nå: nå))
+    }
+
+    static func ekteFormTraader(nå: Date) -> [Traad] {
+        let min: TimeInterval = 60
+        return [
+            Traad(id: "ekte-app", tittel: "kode:eksempel-app", sistAktiv: nå.addingTimeInterval(-6 * min),
+                  holder: TraadHolder(type: .plattform, status: "working", aktiv: true)),
+            Traad(id: "ekte-agent", tittel: "eksempel-agent", sistAktiv: nå.addingTimeInterval(-47 * min),
+                  holder: TraadHolder(type: .plattform, status: "idle", aktiv: true)),
+        ]
+    }
+
     private func data(nå: Date) -> (Naa, [Traad]) {
+        if variant == .ekte { return Self.ekteFormData(nå: nå, kalender: kalender) }
         let min: TimeInterval = 60
         func treffer(_ time: Int, _ minutt: Int, etter: Date, ukedag: Int? = nil) -> Date {
             var komp = DateComponents(hour: time, minute: minutt)

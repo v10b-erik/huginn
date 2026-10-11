@@ -48,8 +48,104 @@ import Testing
     @Test func avvikMedVenterTellerIHeroenMenViserSomVenterIkkeSomAvvik() throws {
         let s = NaaSkjerm(naa: try naa("naa.json"), traader: [], nå: nå, kalender: k)
         #expect(s.avvik.map(\.tittel) == ["forgejo"])
-        #expect(s.venter.map(\.tittel) == ["ko-abc"])
+        // Tittelen er det menneskelige målet («Bygg klient»); håndtaket («ko-abc») er den lille linja under.
+        #expect(s.venter.map(\.tittel) == ["Bygg klient"])
+        #expect(s.venter.map(\.undertekst) == ["ko-abc"])
         #expect(s.venter.first?.ord == "VENTER")
+    }
+
+    // MARK: - «venter»-rader: målet er tittelen, håndtaket er den lille linja under
+
+    private func venterRad(navn: String, tekst: String) -> NaaSkjerm.Rad {
+        let avvik = NaaAvvik(art: "venter", navn: navn, tekst: tekst, ts: nå)
+        return NaaSkjerm(naa: Naa(avvik: [avvik]), traader: [], nå: nå, kalender: k).venter[0]
+    }
+
+    @Test func venterRadHarMåletSomTittelOgHåndtaketSomUndertekst() {
+        let r = venterRad(navn: "repo-stale-eksempel-4", tekst: "Gjennomgå utdatert pull request")
+        #expect(r.tittel == "Gjennomgå utdatert pull request")
+        #expect(r.undertekst == "repo-stale-eksempel-4")
+        #expect(r.undertekstLinjer == 1, "håndtaket er alltid én linje")
+        #expect(r.ord == "VENTER" && r.tone == .aksent && r.tid == nil, "ordet og lampen er uendret")
+    }
+
+    @Test func venterRadLesesAvVoiceOverMedMåletFørst() {
+        let r = venterRad(navn: "repo-stale-eksempel-4", tekst: "Gjennomgå utdatert pull request")
+        #expect(r.talesTekst == "Gjennomgå utdatert pull request, venter")
+        #expect(!r.talesTekst.contains("repo-stale"), "håndtaket leses ikke opp")
+        #expect(venterRad(navn: "ko-1", tekst: " \n ").talesTekst == "ko-1, venter")
+    }
+
+    @Test(arguments: ["", "   ", "\n", " \t\n  \r\n "])
+    func tomEllerBlankTekstBrukerHåndtaketSomTittelUtenÅViseDetToGanger(tekst: String) {
+        let r = venterRad(navn: "ko-xyz", tekst: tekst)
+        #expect(r.tittel == "ko-xyz")
+        #expect(r.undertekst == nil)
+        #expect(r.talesTekst == "ko-xyz, venter")
+    }
+
+    @Test func håndtakSomErLiktMåletVisesIkkeToGanger() {
+        let r = venterRad(navn: "ko-xyz", tekst: "  ko-xyz \n")
+        #expect(r.tittel == "ko-xyz")
+        #expect(r.undertekst == nil)
+    }
+
+    @Test func tomtMålOgTomtHåndtakGirNøytralTittel() {
+        let r = venterRad(navn: "  ", tekst: "")
+        #expect(r.tittel == "Uten navn")
+        #expect(r.undertekst == nil)
+    }
+
+    @Test func flerlinjetMålBlirFørsteLinjeMedNormalisertWhitespace() {
+        #expect(venterRad(navn: "m", tekst: "Bygg   klienten\n\nmer tekst under").tittel == "Bygg klienten")
+        #expect(venterRad(navn: "m", tekst: "\n  \t Første\tmed\u{00A0}nbsp  \r\nandre").tittel == "Første med nbsp")
+        #expect(venterRad(navn: "m", tekst: "\r\n\r\nTredje\r\nfjerde").tittel == "Tredje")
+        #expect(venterRad(navn: "m", tekst: "  Ett  ord  ").tittel == "Ett ord")
+    }
+
+    @Test func langtTokenUtenMellomromBæresUkuttetTilViewet() {
+        let token = "EXAMPLE" + String(repeating: "x0", count: 57)  // 121 tegn uten mellomrom
+        let r = venterRad(navn: "m", tekst: "Svar på \(token)")
+        #expect(r.tittel == "Svar på \(token)")
+        #expect(r.tittel.contains(token), "modellen kutter ikke; viewet kutter i halen med lineLimit(2)")
+        #expect(r.undertekst == "m")
+    }
+
+    @Test func andreRaderBeholderVanligVoiceOverRekkefølge() {
+        let r = NaaSkjerm.Rad(id: "x", tittel: "forgejo", undertekst: "jobb", ord: "FEILET", tid: nil, tone: .feil)
+        #expect(r.talesTekst == "forgejo, jobb, feilet")
+        #expect(r.undertekstLinjer == 2)
+    }
+
+    // MARK: - ekte form (syntetisk): lange mål, lang kalendertittel, heldag, ingen kort
+
+    @Test func ekteFormFixturenGirToVenterRaderMedMåletSomTittel() throws {
+        let s = NaaSkjerm(naa: try naa("naa-ekte-form.json"), traader: [], nå: isoDato("2026-10-11T15:52:00Z"), kalender: k)
+        #expect(s.godkjenninger.isEmpty)
+        #expect(s.tilstand == .krever(2))
+        #expect(s.venter.count == 2)
+        #expect(s.venter[0].tittel.hasPrefix("Faktura-varsel fra leverandør <varsler+acct_EXAMPLE"))
+        #expect(s.venter.map(\.undertekst) == ["post-faktura-eksempel-7", "repo-utdatert-pr-eksempel-12"])
+        #expect(s.venter[1].tittel.split(separator: " ").last!.count > 100, "et token på over 100 tegn uten mellomrom")
+        #expect(s.neste.map(\.tid) == ["I dag", "I dag 17:42"], "heldagen har ingen klokkeslett")
+        #expect(s.neste[1].tittel.count > 90)
+    }
+
+    @Test func ekteFormFixturenOgDemoGirSammeSkjerm() throws {
+        let nå = isoDato("2026-10-11T15:52:00Z")
+        let fraFixtur = NaaSkjerm(
+            naa: try naa("naa-ekte-form.json"), traader: DemoKilde.ekteFormTraader(nå: nå), nå: nå, kalender: k
+        )
+        let fraDemo = DemoKilde(variant: .ekte, kalender: k).skjerm(nå: nå)
+        #expect(fraDemo == fraFixtur, "fixturen og --demo-ekte må ikke drive fra hverandre")
+    }
+
+    @Test func ekteFormInneholderBareSyntetiskeData() throws {
+        let tekst = String(decoding: try Fixtur.data("naa-ekte-form.json"), as: UTF8.self)
+        let epost = tekst.split(whereSeparator: { " <>\"".contains($0) }).filter { $0.contains("@") }
+        #expect(!epost.isEmpty)
+        #expect(epost.allSatisfy { $0.hasSuffix("@example.com") }, "bare example.com-adresser")
+        #expect(!tekst.contains("tail908368") && !tekst.contains("ygg-v1"))
     }
 
     // MARK: - dobbelttelling (serveren sender hver godkjenning både som kort og som «venter»-avvik)
@@ -60,7 +156,8 @@ import Testing
         let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
         // Kortet + «ko-xyz» (en annen sak), ikke «armere-alarmen» (kortets egen mission).
         #expect(s.tilstand == .krever(2))
-        #expect(s.venter.map(\.tittel) == ["ko-xyz"])
+        #expect(s.venter.map(\.tittel) == ["Bygg klient"])
+        #expect(s.venter.map(\.undertekst) == ["ko-xyz"])
         #expect(s.heroUndertekst == "Godkjenning · 1 venter")
     }
 

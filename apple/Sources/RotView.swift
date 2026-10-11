@@ -58,9 +58,9 @@ struct RotView: View {
                 kobling
             case .koblet(let t):
                 naa(valg: t.kildeValg, onSvar: nil, nyttToken: { modell.visKobling() })
-            case .demo(let rolig):
+            case .demo(let rolig, let ekte):
                 // Demo kan trykke Godkjenn/Avslå uten effekt; live har ingen skriveveier ennå, så knappene er av.
-                naa(valg: .demo(rolig: rolig), onSvar: { _ in }, nyttToken: nil)
+                naa(valg: .demo(rolig: rolig, ekte: ekte), onSvar: { _ in }, nyttToken: nil)
             }
         }
         .sheet(isPresented: $visArk) {

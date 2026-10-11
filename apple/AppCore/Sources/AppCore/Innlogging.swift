@@ -9,7 +9,7 @@ public struct Innlogging {
         case ikkeKoblet(feil: TilkoblingsFeil?)
         case kobler
         case koblet(Tilkobling)
-        case demo(rolig: Bool)
+        case demo(rolig: Bool, ekte: Bool = false)
     }
 
     public private(set) var tilstand: Tilstand = .laster
@@ -44,7 +44,7 @@ public struct Innlogging {
         do { lagret = try lager.les() } catch { lagret = nil; leseFeil = true }
         let valg = KildeValg.velg(argumenter: argumenter, miljo: miljo, tillatLive: tillatLive, lagret: lagret)
         switch valg {
-        case .demo(let rolig): tilstand = .demo(rolig: rolig)
+        case .demo(let rolig, let ekte): tilstand = .demo(rolig: rolig, ekte: ekte)
         case .live(let url, let token): tilstand = .koblet(Tilkobling(baseURL: url, token: token))
         case nil: tilstand = .ikkeKoblet(feil: leseFeil ? .kunneIkkeLese : nil)
         }

@@ -26,7 +26,7 @@ struct HuginnApp: App {
         let navn: String
         switch m.tilstand {
         case .koblet(let t): navn = t.kildeValg.navn
-        case .demo(let rolig): navn = KildeValg.demo(rolig: rolig).navn
+        case .demo(let rolig, let ekte): navn = KildeValg.demo(rolig: rolig, ekte: ekte).navn
         default: navn = "ikke koblet"
         }
         Logger(subsystem: "no.huginn", category: "kilde").info("kilde: \(navn, privacy: .public)")

@@ -1,0 +1,28 @@
+{
+  "kort": [],
+  "avvik": [
+    {
+      "art": "venter",
+      "navn": "post-faktura-eksempel-7",
+      "tekst": "Faktura-varsel fra leverandør <varsler+acct_EXAMPLE12345678abcdef@example.com> trenger svar",
+      "ts": "2026-10-11T15:34:00.000Z",
+      "lenke": "shadow#/m/post-faktura-eksempel-7"
+    },
+    {
+      "art": "venter",
+      "navn": "repo-utdatert-pr-eksempel-12",
+      "tekst": "Avklar utdatert pull request https://git.example.com/eksempel/app/pull/4?ref=EXAMPLE0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "ts": "2026-10-11T14:17:00.000Z",
+      "lenke": "shadow#/m/repo-utdatert-pr-eksempel-12"
+    }
+  ],
+  "kalender": [
+    { "tittel": "Eksempeldag, ingen møter", "ts": "2026-10-11T00:00:00.000Z", "heleDagen": true },
+    {
+      "tittel": "Kvartalsgjennomgang og planlegging av eksempelprosjektet med hele teamet i Eksempel AS, Nordlys",
+      "ts": "2026-10-11T17:42:00.000Z",
+      "heleDagen": false
+    }
+  ],
+  "paminnelser": []
+}
