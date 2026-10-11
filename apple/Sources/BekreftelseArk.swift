@@ -16,6 +16,8 @@ struct BekreftelseArk: View {
     var onAvbryt: () -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var hoyde: CGFloat = 0
+    /// Starter lavt og går til innholdets høyde når den er målt (uten dette åpnet arket på `.large` og ble stående der).
+    @State private var valgt: PresentationDetent = .medium
 
     private var godkjenner: Bool { !forespørsel.valg.erAvslag }
 
@@ -32,7 +34,8 @@ struct BekreftelseArk: View {
             }
             .background(Bakgrunn())
             #if os(iOS)
-            .presentationDetents(hoyde > 0 ? [.height(hoyde + 8), .large] : [.large])
+            .presentationDetents(hoyde > 0 ? [.height(hoyde + 8), .large] : [.medium, .large], selection: $valgt)
+            .onChange(of: hoyde) { _, h in if valgt != .large { valgt = .height(h + 8) } }
             .presentationDragIndicator(.visible)
             #else
             .frame(minWidth: 420, minHeight: 360)
