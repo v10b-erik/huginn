@@ -32,17 +32,20 @@ public struct LiveKilde: NaaKilde, CustomStringConvertible, CustomDebugStringCon
 public struct NaaFeil: Sendable, Equatable {
     public var tittel: String
     public var detalj: String
+    /// 401: tokenet er trukket eller ukjent. Å prøve igjen hjelper ikke; det som hjelper er å koble til på nytt.
+    public var kreverNyttToken: Bool
 
-    public init(tittel: String, detalj: String) {
+    public init(tittel: String, detalj: String, kreverNyttToken: Bool = false) {
         self.tittel = tittel
         self.detalj = detalj
+        self.kreverNyttToken = kreverNyttToken
     }
 
     /// 401 er en egen sak («Ikke innlogget»); alt annet er at flata ikke svarer. Detaljen er aldri
     /// svarinnholdet eller tokenet: det kan være samtaledata.
     public static func fra(_ feil: Error) -> NaaFeil {
         if let t = feil as? TraadflataFeil, t == .ikkeInnlogget {
-            return NaaFeil(tittel: "Ikke innlogget", detalj: "Enhetstokenet er ikke gyldig for trådflata.")
+            return NaaFeil(tittel: "Ikke innlogget", detalj: "Enhetstokenet er ikke gyldig for trådflata.", kreverNyttToken: true)
         }
         return NaaFeil(tittel: "Kan ikke nå trådflata", detalj: "Sjekk nettverket og prøv igjen.")
     }

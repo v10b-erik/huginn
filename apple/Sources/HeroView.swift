@@ -72,22 +72,41 @@ struct HeroView: View {
     }
 }
 
-/// Plattformchippen øverst til høyre: lampe + ord (aldri farge alene).
+/// Plattformchippen øverst til høyre: lampe + ord (aldri farge alene). `ok == nil`: vi vet ikke ennå (ingen
+/// data), og da står den som «Tilkobling» uten lampe: ingen farge uten betydning.
 struct StatusChip: View {
-    var ok: Bool
+    var ok: Bool?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s2) {
-            Circle().fill(ok ? Color(p.ok) : Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
-            Text(ok ? "Plattform ok" : "Plattform avvik").skrift(.etikett).foregroundStyle(Color(p.tekst)).lineLimit(1)
+            if let ok { Circle().fill(ok ? Color(p.ok) : Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led) }
+            Text(tekst).skrift(.etikett).foregroundStyle(Color(p.tekst)).lineLimit(1)
         }
         .padding(.horizontal, Theme.Avstand.s3)
         .padding(.vertical, Theme.Avstand.s2)
+        .frame(minHeight: Theme.Maal.beroringMin)
         .glassFlate(radius: Theme.Radius.chip)
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(ok ? "Plattform ok" : "Plattform har avvik")
+        .accessibilityLabel(etikett)
         .accessibilityIdentifier("naaStatusChip")
+    }
+
+    private var tekst: String {
+        switch ok {
+        case true?: "Plattform ok"
+        case false?: "Plattform avvik"
+        case nil: "Tilkobling"
+        }
+    }
+
+    private var etikett: String {
+        switch ok {
+        case true?: "Plattform ok"
+        case false?: "Plattform har avvik"
+        case nil: "Tilkobling"
+        }
     }
 }

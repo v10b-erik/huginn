@@ -108,9 +108,11 @@ import Testing
     @Test func feilVisesSomAvviksraderUtenInnholdEllerToken() {
         let ut = NaaFeil.fra(TraadflataFeil.ikkeInnlogget)
         #expect(ut.tittel == "Ikke innlogget")
+        #expect(ut.kreverNyttToken, "401 tilbyr «Koble til på nytt», ikke «Prøv igjen»")
         for feil in [TraadflataFeil.nettverk("offline"), .http(status: 500, melding: "hemmelig"), .dekoding("tok-abc"), .ugyldigSvar] {
             let f = NaaFeil.fra(feil)
             #expect(f.tittel == "Kan ikke nå trådflata")
+            #expect(!f.kreverNyttToken)
             #expect(!f.detalj.contains("hemmelig") && !f.detalj.contains("tok-abc") && !f.detalj.contains("offline"))
         }
     }

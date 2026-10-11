@@ -6,14 +6,24 @@ struct NaaView: View {
     @State private var modell: NaaModell
     private let kildeNavn: String
     private let onSvar: ((NaaSkjerm.Handling) -> Void)?
+    private let onTilkobling: () -> Void
+    private let onKobleTilPaaNytt: (() -> Void)?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
 
     /// - Parameter onSvar: `nil` = Godkjenn/Avslå er synlige men deaktiverte (live-modus har ingen skriveveier).
-    init(kilde: any NaaKilde, kildeNavn: String, onSvar: ((NaaSkjerm.Handling) -> Void)?) {
+    /// - Parameters:
+    ///   - onTilkobling: statusbrikken åpner arket med vert, «Koble fra» og «Bytt til demo».
+    ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
+    init(
+        kilde: any NaaKilde, kildeNavn: String, onSvar: ((NaaSkjerm.Handling) -> Void)?,
+        onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil
+    ) {
         _modell = State(initialValue: NaaModell(kilde: kilde))
         self.kildeNavn = kildeNavn
         self.onSvar = onSvar
+        self.onTilkobling = onTilkobling
+        self.onKobleTilPaaNytt = onKobleTilPaaNytt
     }
 
     var body: some View {
@@ -56,7 +66,11 @@ struct NaaView: View {
                 .skrift(.etikett).foregroundStyle(Color(p.tekst))
                 .accessibilityIdentifier("naaDato")
             Spacer()
-            if let skjerm = modell.skjerm { StatusChip(ok: skjerm.plattformOk) }
+            // Brikken er også veien til tilkoblingen; uten data (feil, første henting) står den uten lampe.
+            Button(action: onTilkobling) { StatusChip(ok: modell.skjerm?.plattformOk) }
+                .buttonStyle(.plain)
+                .accessibilityHint("Åpner tilkoblingen")
+                .accessibilityIdentifier("naaTilkoblingKnapp")
         }
         .padding(.horizontal, Theme.Avstand.s1)
         .padding(.bottom, Theme.Avstand.s1)
@@ -108,12 +122,19 @@ struct NaaView: View {
                     Spacer(minLength: Theme.Avstand.s2)
                     Text("FEIL").skrift(.status).foregroundStyle(Color(p.feil))
                 }
-                Button { Task { await modell.last() } } label: {
-                    Text("Prøv igjen").skrift(.knapp)
+                if feil.kreverNyttToken, let onKobleTilPaaNytt {
+                    // Å prøve igjen med et trukket token hjelper ikke. Det lagrede beholdes til nytt er bekreftet.
+                    Button(action: onKobleTilPaaNytt) { Text("Koble til på nytt").skrift(.knapp) }
+                        .buttonStyle(KnappStil(rolle: .handling))
+                        .accessibilityIdentifier("naaKobleTilPaaNytt")
+                } else {
+                    Button { Task { await modell.last() } } label: {
+                        Text("Prøv igjen").skrift(.knapp)
+                    }
+                    .buttonStyle(KnappStil(rolle: .sekundar))
+                    .disabled(modell.henter)
+                    .accessibilityIdentifier("naaForsoekIgjen")
                 }
-                .buttonStyle(KnappStil(rolle: .sekundar))
-                .disabled(modell.henter)
-                .accessibilityIdentifier("naaForsoekIgjen")
             }
         }
         .accessibilityElement(children: .contain)

@@ -12,6 +12,10 @@ packages:
 settings:
   base:
     CODE_SIGNING_ALLOWED: "NO"
+    # Keychain krever en signatur med application-identifier også i simulatoren (usignert gir -34018).
+    # Ad hoc ("-") holder der; device-modus overstyrer på kommandolinja, og macOS er urørt (SDK-betinget).
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": "YES"
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
     GENERATE_INFOPLIST_FILE: "YES"
 
 targets:
