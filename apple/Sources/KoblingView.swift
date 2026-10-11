@@ -83,7 +83,7 @@ struct KoblingView: View {
     }
 
     private func felter(_ p: Theme.Palette) -> some View {
-        Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s4, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s4)) {
+        Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s3, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s3)) {
             VStack(alignment: .leading, spacing: Theme.Avstand.s4) {
                 FeltRamme(etikett: "Adresse") {
                     TextField("", text: $adresse, prompt: Text(verbatim: "https://…").foregroundStyle(Color(p.dempet)))
@@ -145,10 +145,12 @@ struct KoblingView: View {
                     .accessibilityLabel("Kobler til trådflata")
                     .accessibilityIdentifier("kobling.kobler")
             } else {
+                // Fylt flate = handlingen er tilgjengelig. Før feltene er fylt står den som glass med dempet
+                // tekst (en blek fylt flate med hvit tekst er uleselig i lys modus).
                 Button(action: send) { Text("Koble til").skrift(.knapp) }
-                    .buttonStyle(KnappStil(rolle: .handling))
+                    .buttonStyle(KnappStil(rolle: kanSende ? .handling : .sekundar))
                     .disabled(!kanSende)
-                    .opacity(kanSende ? 1 : 0.45)
+                    .opacity(kanSende ? 1 : 0.6)
                     .accessibilityIdentifier("kobling.koble")
             }
             HStack(spacing: Theme.Avstand.s2) {
@@ -201,7 +203,7 @@ private struct FeltRamme<Innhold: View>: View {
                 .padding(.horizontal, Theme.Avstand.s1)
                 .accessibilityHidden(true)
             innhold
-                .padding(.horizontal, Theme.Avstand.s4)
+                .padding(.horizontal, Theme.Avstand.s3)
                 .frame(minHeight: Theme.Maal.beroringMin + Theme.Avstand.s2)
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous).fill(Color(p.band)))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous).strokeBorder(Color(p.kant), lineWidth: 1))

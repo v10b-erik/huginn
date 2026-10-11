@@ -4,7 +4,7 @@ import AppCore
 /// Roten: velger mellom «Koble til» og «Nå» etter `Innlogging`-tilstanden, og eier arket fra statusbrikken.
 struct RotView: View {
     @State var modell: InnloggingModell
-    @State private var visArk = false
+    @State private var visArk = Forhandsvisning.visArkVedStart
     private let forhandsvisning: Forhandsvisning
 
     /// Synsløkka (bare DEBUG): forhåndsutfyll feltene og send, med falske verdier, slik at skjermbilder av
@@ -13,6 +13,15 @@ struct RotView: View {
         var adresse = Tilkobling.standardAdresse
         var token = ""
         var send = false
+
+        /// Synsløkka: åpner tilkoblingsarket ved start (`--vis-ark`). Alltid `false` i release.
+        static var visArkVedStart: Bool {
+            #if DEBUG
+            ProcessInfo.processInfo.arguments.contains("--vis-ark")
+            #else
+            false
+            #endif
+        }
 
         static func fra(argumenter: [String]) -> Forhandsvisning {
             #if DEBUG
