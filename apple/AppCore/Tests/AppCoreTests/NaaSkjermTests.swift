@@ -374,7 +374,7 @@ import Testing
         let kort = NaaKort(id: "x", describe: "Armere alarmen", status: "pending", createdAt: nå.addingTimeInterval(-192))
         let s = NaaSkjerm(naa: Naa(kort: [kort]), traader: [], nå: nå, kalender: k)
         #expect(s.heroUndertekst == "Godkjenning", "ingen alder i undertekst: den fryser mellom hentinger")
-        #expect(s.godkjenninger[0].godkjenn.key == "approve", "standardnøkkel når kortet ikke lister handlinger")
+        #expect(s.godkjenninger[0].godkjenn?.key == "approve", "standardnøkkel når kortet ikke lister handlinger")
     }
 
     @Test func kortUtenBeskrivelseBrukerNavnetOgSiderUtenNavnetEtterFallback() {

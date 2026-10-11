@@ -80,6 +80,15 @@ public struct DemoKilde: NaaKilde {
         ]
     }
 
+    static func handlinger(_ h: DemoAvgjort.Handlinger) -> [NaaKort.Handling] {
+        let avslaa = NaaKort.Handling(key: "deny", label: "Avslå")
+        switch h {
+        case .standard: return [.init(key: "approve", label: "Godkjenn"), avslaa]
+        case .en: return [.init(key: "send", label: "✉️ Send"), avslaa]
+        case .flere: return [.init(key: "send", label: "✉️ Send"), .init(key: "draft", label: "💾 Lagre utkast"), avslaa]
+        }
+    }
+
     private func data(nå: Date) -> (Naa, [Traad]) {
         if variant == .ekte { return Self.ekteFormData(nå: nå, kalender: kalender) }
         let min: TimeInterval = 60
@@ -106,7 +115,7 @@ public struct DemoKilde: NaaKilde {
             NaaKort(id: "demo-alarm", name: "alarm", describe: beskrivelse, status: "pending",
                     expiresAt: nil, createdAt: nå.addingTimeInterval(-(3 * min + 12)), agent: nil,
                     threadKey: "kode:v10b:ajax-fix",
-                    actions: [.init(key: "approve", label: "Godkjenn"), .init(key: "deny", label: "Avslå")])
+                    actions: Self.handlinger(avgjort?.handlinger ?? .standard))
         ]
         let naa = Naa(
             kort: kort, avvik: avvik,

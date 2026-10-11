@@ -300,6 +300,15 @@ final class Teller: @unchecked Sendable {
         #expect(aut.antall == 0 && send.kall.isEmpty)
         #expect(t.tilstand == .feil(.ugyldigKort))
     }
+
+    @Test func kvitteringenFårKlokkeslettFraInjisertKlokke() async {
+        let tid = Date(timeIntervalSince1970: 1_760_000_000)
+        let t = SvarTjeneste(autentisering: FakeAutentisering(), send: { _, _ in .avgjort }, oppfrisk: {}, nå: { tid })
+        #expect(t.sistFerdig == nil)
+        t.velg(avslå)
+        await t.bekreft()
+        #expect(t.sistFerdig == tid)
+    }
 }
 
 extension Svar.Tilstand {

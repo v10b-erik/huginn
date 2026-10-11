@@ -29,15 +29,17 @@ public struct Svarvalg: Sendable, Equatable {
 
     public static let avslaa = Svarvalg(key: "deny", label: "Avslå")
 
-    /// Godkjenn-valget for et kort: `approve` når kortet har den (eller ingen handlinger: binært kort), ellers kortets
-    /// første handling som ikke er `deny` (serveren avviser `approve` med 400 når kortet har andre handlinger).
-    /// Aldri `deny`: Godkjenn kan ikke ende som et avslag, og Avslå kan ikke ende som en handling.
-    public static func godkjenn(actions: [NaaKort.Handling]?) -> Svarvalg {
+    /// Godkjenn-valget for et kort, med kortets EGEN etikett (`approve` heter alltid «Godkjenn»). Appen tilbyr bare
+    /// Godkjenn når det finnes nøyaktig ÉN handling som ikke er `deny` (eller ingen: binært kort, `approve`).
+    /// Har kortet flere, er svaret `nil`: ingen valg-vei finnes, og brukeren må svare i Telegram. Å velge «den første»
+    /// ville sendt en handling brukeren aldri så navnet på. Aldri `deny`: Godkjenn kan ikke ende som et avslag.
+    public static func godkjenn(actions: [NaaKort.Handling]?) -> Svarvalg? {
         let handlinger = (actions ?? []).filter { $0.key != "deny" }
-        if let a = handlinger.first(where: { $0.key == "approve" }) ?? handlinger.first {
-            return Svarvalg(key: a.key, label: a.label.isEmpty ? "Godkjenn" : a.label)
-        }
-        return Svarvalg(key: "approve", label: "Godkjenn")
+        guard handlinger.count <= 1 else { return nil }
+        guard let a = handlinger.first else { return Svarvalg(key: "approve", label: "Godkjenn") }
+        if a.key == "approve" { return Svarvalg(key: "approve", label: "Godkjenn") }
+        let etikett = a.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Svarvalg(key: a.key, label: etikett.isEmpty ? a.key : etikett)
     }
 }
 
@@ -54,6 +56,8 @@ public enum SvarFeil: Sendable, Equatable {
     case ikkeRegistrert(status: Int)
     /// 401.
     case kreverNyttToken
+    /// En intern vakt stoppet forsendelsen. Ingenting ble sendt, og tilstanden kan forlates (`lukk`).
+    case internFeil
 
     public var kreverNyttToken: Bool { self == .kreverNyttToken }
 
@@ -81,6 +85,8 @@ public enum SvarFeil: Sendable, Equatable {
             SvarVisning(ord: "IKKE REGISTRERT", melding: "Serveren godtok ikke valget. Ingenting ble registrert.")
         case .ikkeRegistrert(let status):
             SvarVisning(ord: "IKKE REGISTRERT", melding: "Serveren avviste svaret (kode \(status)). Ingenting ble registrert.")
+        case .internFeil:
+            SvarVisning(ord: "IKKE SENDT", melding: "Noe gikk galt i appen. Ingenting ble sendt.")
         case .kreverNyttToken:
             SvarVisning(ord: "IKKE INNLOGGET", melding: "Enhetstokenet er ikke gyldig. Koble til på nytt. Ingenting ble registrert.")
         }
@@ -113,26 +119,54 @@ public protocol Autentisering: Sendable {
 /// Tilstandsmaskinen for ett svar om gangen. Ren: ingen UI, ingen nettverk, ingen klokke. Kalleren utfører `Kommando`-en
 /// hver overgang gir tilbake og melder utfallet.
 public struct Svar: Sendable, Equatable {
-    /// Det brukeren ber om: kortet (med hele teksten) og valget.
+    /// Det brukeren ber om: kortet (med hele teksten), risikoinformasjonen brikken viser, og valget (med kortets etikett).
     public struct Forespørsel: Sendable, Equatable {
         public var kortId: String
-        /// Hele kortteksten (`describe`), vist rullbar i bekreftelsen.
+        /// Hele kortteksten (`describe`).
         public var tekst: String
         public var valg: Svarvalg
+        /// «Fra», «rent» og «Klasse» slik brikken viser dem: de skal stå der man bestemmer seg.
+        public var kilde: String?
+        public var kildeRen: Bool?
+        public var klasse: String?
 
-        public init(kortId: String, tekst: String, valg: Svarvalg) {
+        public init(kortId: String, tekst: String, valg: Svarvalg, kilde: String? = nil, kildeRen: Bool? = nil, klasse: String? = nil) {
             self.kortId = kortId
             self.tekst = tekst
             self.valg = valg
+            self.kilde = kilde
+            self.kildeRen = kildeRen
+            self.klasse = klasse
         }
 
-        /// Første linje med innhold, rensket for usynlige tegn. Til tittel, VoiceOver og systemdialogen.
-        public var forsteLinje: String {
-            let l = NaaSkjerm.maal(tekst)
-            return l.isEmpty ? "Godkjenning" : l
+        /// Tegn som styrer lesretningen (U+202A–202E, U+2066–2069, U+200E/F). Fjernes fra alt som VISES (ikke fra
+        /// modellen), så serverstyrt tekst ikke kan vri hvordan godkjenningen leses.
+        private static let retningstegn: Set<Unicode.Scalar> = [
+            "\u{202A}", "\u{202B}", "\u{202C}", "\u{202D}", "\u{202E}",
+            "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}", "\u{200E}", "\u{200F}",
+        ]
+
+        public static func rens(_ tekst: String) -> String {
+            String(String.UnicodeScalarView(tekst.unicodeScalars.filter { !retningstegn.contains($0) }))
         }
 
-        /// Teksten i systemets autentiseringsdialog: handlingen og første linje, kuttet. Aldri token.
+        /// Tittelen (første linje med innhold) og resten av teksten. Tittel + rest er hele teksten.
+        private var delt: (tittel: String, rest: String) {
+            let t = Self.rens(tekst).replacingOccurrences(of: "\r\n", with: "\n")
+            let linjer = t.unicodeScalars
+                .split(omittingEmptySubsequences: false, whereSeparator: { CharacterSet.newlines.contains($0) })
+                .map { String(String.UnicodeScalarView($0)) }
+            guard let i = linjer.firstIndex(where: { !NaaSkjerm.maal($0).isEmpty }) else { return ("Godkjenning", "") }
+            let rest = linjer[(i + 1)...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            return (NaaSkjerm.maal(linjer[i]), rest)
+        }
+
+        /// Overskriften i bekreftelsen, VoiceOver og systemdialogen: første linje, uten retningstegn.
+        public var forsteLinje: String { delt.tittel }
+        /// Resten av kortteksten (kan være tom). Vises rullbar under overskriften.
+        public var rest: String { delt.rest }
+
+        /// Teksten i systemets autentiseringsdialog: handlingens etikett og første linje, kuttet. Aldri token.
         public var begrunnelse: String {
             let maks = 80
             let linje = forsteLinje
@@ -182,11 +216,21 @@ public struct Svar: Sendable, Equatable {
     public private(set) var tilstand: Tilstand = .ingen
     private var forrigeId = 0
 
-    /// Når en forespørsel ikke fikk svar. Samme tekst på skjermen og i testen.
-    public static let usikkerVisning = SvarVisning(
-        ord: "USIKKERT",
-        melding: "Usikkert om svaret ble registrert. Kortet er borte hvis det gikk gjennom."
-    )
+    /// Når en forespørsel ikke fikk svar og kortet fortsatt står der.
+    public static func usikkerVisning(for f: Forespørsel) -> SvarVisning {
+        SvarVisning(
+            ord: "USIKKERT",
+            melding: "«\(f.valg.label)» er sendt, men svaret kom ikke frem. Trykk Oppdater for å se om kortet er borte; da gikk det gjennom."
+        )
+    }
+
+    /// Når en forespørsel ikke fikk svar, men kortet allerede er borte fra «Nå».
+    public static func usikkerBorteVisning(for f: Forespørsel) -> SvarVisning {
+        SvarVisning(
+            ord: "USIKKERT",
+            melding: "«\(f.valg.label)» er sendt, og svaret kom ikke frem, men kortet er borte fra «Nå». Da gikk det trolig gjennom."
+        )
+    }
 
     public init() {}
 
@@ -290,6 +334,13 @@ public struct Svar: Sendable, Equatable {
             tilstand = .usikker(f.forespørsel)
             return .oppfrisk
         }
+    }
+
+    /// En intern vakt stoppet en forsendelse som ikke skulle skjedd. Tilstanden blir en feil som kan lukkes, ikke en
+    /// `.sender` ingen får forlatt. Gjelder bare det forsøket som pågår.
+    public mutating func stopp(id: Int) {
+        guard case .sender(let f) = tilstand, f.id == id else { return }
+        tilstand = .feil(.internFeil)
     }
 
     /// Lukker bekreftelsen, kvitterer en feil/usikkerhet/ferdig, eller avbryter autentiseringen (et senere svar fra

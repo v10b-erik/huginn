@@ -34,6 +34,15 @@ import Testing
         #expect(s.antallKrever == 1)
     }
 
+    @Test func demoKortetFårHandlingeneSomErBedt() async throws {
+        func skjerm(_ h: DemoAvgjort.Handlinger) async throws -> NaaSkjerm {
+            try await DemoKilde(variant: .avvik, nå: { Date(timeIntervalSince1970: 1_760_000_000) }, avgjort: DemoAvgjort(handlinger: h)).hent()
+        }
+        #expect(try await skjerm(.standard).godkjenninger[0].godkjenn?.label == "Godkjenn")
+        #expect(try await skjerm(.en).godkjenninger[0].godkjenn?.label == "✉️ Send")
+        #expect(try await skjerm(.flere).godkjenninger[0].godkjenn == nil)
+    }
+
     @Test func atferdeneSimulererServeren() async throws {
         #expect(try await DemoAvgjort(atferd: .alleredeAvgjort).svar(kortId: "demo-alarm", key: "deny") == .alleredeAvgjort("kortet er allerede avgjort"))
         await #expect(throws: TraadflataFeil.nettverk("demo")) {
@@ -46,24 +55,37 @@ import Testing
 
     // MARK: - launch-argumenter (bare DEBUG)
 
+    private let demo = KildeValg.demo(rolig: false)
+    private let live = KildeValg.live(url: URL(string: "https://eksempel.example.com")!, token: "tok-0123456789abcdef01234567")
+
     @Test func argumenteneGjelderBareNårLiveErTillatt() {
-        let args = ["--demo", "--auto-godkjenn", "--auto-svar=godkjenn", "--auto-bekreft", "--demo-svar=henger", "--demo-lang"]
-        #expect(KildeValg.brukerAutoGodkjenn(argumenter: args, tillatLive: true))
-        #expect(!KildeValg.brukerAutoGodkjenn(argumenter: args, tillatLive: false), "--auto-godkjenn har ingen virkning i release")
-        #expect(KildeValg.autoSvar(argumenter: args, tillatLive: true) == .godkjenn)
-        #expect(KildeValg.autoSvar(argumenter: args, tillatLive: false) == nil)
-        #expect(KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true))
-        #expect(!KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: false))
+        let args = ["--demo", "--auto-godkjenn", "--auto-svar=godkjenn", "--auto-bekreft", "--demo-svar=henger", "--demo-lang", "--demo-handlinger=flere"]
+        #expect(KildeValg.brukerAutoGodkjenn(argumenter: args, tillatLive: true, valg: demo))
+        #expect(!KildeValg.brukerAutoGodkjenn(argumenter: args, tillatLive: false, valg: demo), "--auto-godkjenn har ingen virkning i release")
+        #expect(KildeValg.autoSvar(argumenter: args, tillatLive: true, valg: demo) == .godkjenn)
+        #expect(KildeValg.autoSvar(argumenter: args, tillatLive: false, valg: demo) == nil)
+        #expect(KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true, valg: demo))
+        #expect(!KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: false, valg: demo))
         #expect(KildeValg.demoAvgjort(argumenter: args, tillatLive: true).atferd == .henger)
         #expect(KildeValg.demoAvgjort(argumenter: args, tillatLive: true).langtKort)
+        #expect(KildeValg.demoAvgjort(argumenter: args, tillatLive: true).handlinger == .flere)
         #expect(KildeValg.demoAvgjort(argumenter: args, tillatLive: false).atferd == .avgjort)
         #expect(!KildeValg.demoAvgjort(argumenter: args, tillatLive: false).langtKort)
+        #expect(KildeValg.demoAvgjort(argumenter: args, tillatLive: false).handlinger == .standard)
+    }
+
+    /// R1: mot en live kilde har ingen auto-oppførsel virkning, selv i DEBUG og med alle argumentene.
+    @Test func autoOppførselHarIngenVirkningMotLiveKilde() {
+        let args = ["--auto-godkjenn", "--auto-svar=godkjenn", "--auto-svar=avslaa", "--auto-bekreft"]
+        #expect(!KildeValg.brukerAutoGodkjenn(argumenter: args, tillatLive: true, valg: live))
+        #expect(KildeValg.autoSvar(argumenter: args, tillatLive: true, valg: live) == nil)
+        #expect(!KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true, valg: live))
     }
 
     @Test func autoSvarKjennerBareGodkjennOgAvslaa() {
-        #expect(KildeValg.autoSvar(argumenter: ["--auto-svar=avslaa"], tillatLive: true) == .avslaa)
-        #expect(KildeValg.autoSvar(argumenter: ["--auto-svar=hva-som-helst"], tillatLive: true) == nil)
-        #expect(KildeValg.autoSvar(argumenter: [], tillatLive: true) == nil)
+        #expect(KildeValg.autoSvar(argumenter: ["--auto-svar=avslaa"], tillatLive: true, valg: demo) == .avslaa)
+        #expect(KildeValg.autoSvar(argumenter: ["--auto-svar=hva-som-helst"], tillatLive: true, valg: demo) == nil)
+        #expect(KildeValg.autoSvar(argumenter: [], tillatLive: true, valg: demo) == nil)
     }
 
     @Test func tilgangForDemoSvarerLokaltOgDelerTilstandMedKilden() async throws {

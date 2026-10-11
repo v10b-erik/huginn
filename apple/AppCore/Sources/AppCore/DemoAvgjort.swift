@@ -17,13 +17,21 @@ public final class DemoAvgjort: @unchecked Sendable {
         case alleredeAvgjort
     }
 
+    /// Hvilke handlinger demokortet har. `en`/`flere` finnes for å vise at kortets egen etikett følger med, og at et kort
+    /// med flere handlinger ikke får noen Godkjenn-vei.
+    public enum Handlinger: String, Sendable, Equatable {
+        case standard, en, flere
+    }
+
     public let atferd: Atferd
+    public let handlinger: Handlinger
     /// Demokortet får en lang, flerlinjet tekst (til å vise at hele teksten rommes i bekreftelsen).
     public let langtKort: Bool
     private let lås = NSLock()
     private var ider: Set<String> = []
 
-    public init(atferd: Atferd = .avgjort, langtKort: Bool = false) {
+    public init(atferd: Atferd = .avgjort, langtKort: Bool = false, handlinger: Handlinger = .standard) {
+        self.handlinger = handlinger
         self.atferd = atferd
         self.langtKort = langtKort
     }

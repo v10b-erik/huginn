@@ -30,11 +30,14 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var valg: Valg
         /// Handlingsnøkkelen serveren ga (`approve`/`deny`); standard når kortet ikke lister dem.
         public var key: String
+        /// Kortets etikett for handlingen («Godkjenn» for `approve`): det brukeren ser og bekrefter.
+        public var label: String
 
-        public init(kortId: String, valg: Valg, key: String) {
+        public init(kortId: String, valg: Valg, key: String, label: String? = nil) {
             self.kortId = kortId
             self.valg = valg
             self.key = key
+            self.label = label ?? (valg == .godkjenn ? "Godkjenn" : "Avslå")
         }
     }
 
@@ -49,7 +52,8 @@ public struct NaaSkjerm: Sendable, Equatable {
         /// Risikoklasse («Høyrisiko»). `nil` = serveren oppgir den ikke, og båndet utelates.
         public var klasse: String?
         public var opprettet: Date?
-        public var godkjenn: Handling
+        /// `nil` når kortet har flere handlinger enn Godkjenn/Avslå kan bære: da finnes ingen Godkjenn-vei i appen.
+        public var godkjenn: Handling?
         public var avslaa: Handling
     }
 
@@ -152,7 +156,7 @@ public struct NaaSkjerm: Sendable, Equatable {
                 kildeRen: nil,
                 klasse: nil,
                 opprettet: kort.createdAt,
-                godkjenn: Handling(kortId: kort.id, valg: .godkjenn, key: Svarvalg.godkjenn(actions: kort.actions).key),
+                godkjenn: Svarvalg.godkjenn(actions: kort.actions).map { Handling(kortId: kort.id, valg: .godkjenn, key: $0.key, label: $0.label) },
                 avslaa: Handling(kortId: kort.id, valg: .avslaa, key: Svarvalg.avslaa.key)
             )
         }
@@ -420,18 +424,24 @@ public struct NaaSkjerm: Sendable, Equatable {
 }
 
 extension NaaSkjerm.Godkjenning {
-    /// Brikkens knapp → det bekreftelsen skal vise. `nil` når handlingen gjelder et annet kort. Hele kortteksten
-    /// (`tittel` er `describe`) følger med, ikke bare første linje.
+    /// Brikkens knapp → det bekreftelsen skal vise. `nil` når handlingen gjelder et annet kort, og for Godkjenn når
+    /// kortet ikke har noen Godkjenn-vei (flere handlinger) eller nøkkelen ikke er kortets egen. Det finnes altså
+    /// ingen forespørsel å bekrefte, ikke bare ingen knapp. Hele kortteksten og risikoinformasjonen følger med.
     public func forespørsel(for handling: NaaSkjerm.Handling) -> Svar.Forespørsel? {
         guard handling.kortId == id else { return nil }
-        let valg = handling.valg == .avslaa
-            ? Svarvalg.avslaa
-            : Svarvalg(key: handling.key, label: "Godkjenn")
-        return Svar.Forespørsel(kortId: id, tekst: tittel, valg: valg)
+        let valg: Svarvalg
+        switch handling.valg {
+        case .avslaa:
+            valg = .avslaa
+        case .godkjenn:
+            guard let g = godkjenn, g.key == handling.key, g.kortId == id else { return nil }
+            valg = Svarvalg(key: g.key, label: g.label)
+        }
+        return Svar.Forespørsel(kortId: id, tekst: tittel, valg: valg, kilde: kilde, kildeRen: kildeRen, klasse: klasse)
     }
 }
 
 extension NaaSkjerm.Godkjenning {
     /// Første linje med innhold i en korttekst, til VoiceOver-etiketter.
-    public static func forsteLinje(_ tekst: String) -> String { NaaSkjerm.maal(tekst) }
+    public static func forsteLinje(_ tekst: String) -> String { NaaSkjerm.maal(Svar.Forespørsel.rens(tekst)) }
 }

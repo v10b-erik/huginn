@@ -28,11 +28,57 @@ import Testing
         #expect(Svarvalg.godkjenn(actions: nil) == godkjenn, "binært kort: approve")
         #expect(Svarvalg.godkjenn(actions: []) == godkjenn)
         let a = NaaKort.Handling(key: "approve", label: "Godkjenn"), d = NaaKort.Handling(key: "deny", label: "Avslå")
-        #expect(Svarvalg.godkjenn(actions: [d, a]).key == "approve")
+        #expect(Svarvalg.godkjenn(actions: [d, a])?.key == "approve")
         let u = NaaKort.Handling(key: "deploy", label: "Rull ut")
-        #expect(Svarvalg.godkjenn(actions: [u, d]) == Svarvalg(key: "deploy", label: "Rull ut"), "serveren avviser approve når kortet har andre handlinger")
-        #expect(Svarvalg.godkjenn(actions: [d]).key == "approve", "deny blir aldri et Godkjenn")
-        #expect(Svarvalg.godkjenn(actions: [d]).krevAutentisering)
+        #expect(Svarvalg.godkjenn(actions: [u, d]) == Svarvalg(key: "deploy", label: "Rull ut"), "én egen handling: dens etikett følger med")
+        #expect(Svarvalg.godkjenn(actions: [d])?.key == "approve", "deny blir aldri et Godkjenn")
+        #expect(Svarvalg.godkjenn(actions: [d])?.krevAutentisering == true)
+        let aMedEmoji = NaaKort.Handling(key: "approve", label: "✅ Ja takk")
+        #expect(Svarvalg.godkjenn(actions: [aMedEmoji, d])?.label == "Godkjenn", "approve heter alltid Godkjenn")
+    }
+
+    // MARK: - R2: hvilken handling
+
+    private func kort(_ actions: [NaaKort.Handling]?) -> NaaKort {
+        NaaKort(id: "kort-0001", name: nil, describe: "Send eposten\n\nTil kunde@example.com", status: "pending", expiresAt: nil,
+                createdAt: nil, agent: nil, threadKey: "kode:eksempel", actions: actions)
+    }
+
+    private func skjermMed(_ k: NaaKort) -> NaaSkjerm.Godkjenning {
+        NaaSkjerm(naa: Naa(kort: [k]), traader: [], nå: Date(timeIntervalSince1970: 1_760_000_000)).godkjenninger[0]
+    }
+
+    @Test func énEgenHandlingBærerSinEtikettHeltTilForespørselenOgBegrunnelsen() throws {
+        let g = skjermMed(kort([.init(key: "send", label: "✉️ Send"), .init(key: "deny", label: "Avslå")]))
+        let h = try #require(g.godkjenn)
+        #expect(h.key == "send" && h.label == "✉️ Send")
+        let f = try #require(g.forespørsel(for: h))
+        #expect(f.valg == Svarvalg(key: "send", label: "✉️ Send"))
+        #expect(f.valg.krevAutentisering)
+        #expect(f.begrunnelse == "✉️ Send: Send eposten")
+        #expect(f.kilde == "kode:eksempel", "risikoinformasjonen følger med til bekreftelsen")
+    }
+
+    @Test func flereHandlingerGirIngenGodkjennVeiIModellenOgIngenForespørsel() throws {
+        let g = skjermMed(kort([.init(key: "send", label: "✉️ Send"), .init(key: "draft", label: "💾 Lagre utkast"), .init(key: "deny", label: "Avslå")]))
+        #expect(g.godkjenn == nil)
+        // Heller ikke ved å lage handlingen for hånd: nøkkelen er ikke kortets egen Godkjenn.
+        for key in ["send", "draft", "approve"] {
+            #expect(g.forespørsel(for: NaaSkjerm.Handling(kortId: g.id, valg: .godkjenn, key: key)) == nil)
+        }
+        // Avslå virker som vanlig.
+        let avslag = try #require(g.forespørsel(for: g.avslaa))
+        #expect(avslag.valg == .avslaa && !avslag.valg.krevAutentisering)
+        // Og tilstandsmaskinen får aldri en forespørsel å bekrefte for Godkjenn.
+        var s = Svar()
+        #expect(s.bekreft() == .ingenting)
+    }
+
+    @Test func godkjennMedFremmedNøkkelEllerAnnetKortGirIngenForespørsel() {
+        let g = skjermMed(kort(nil))
+        #expect(g.forespørsel(for: NaaSkjerm.Handling(kortId: g.id, valg: .godkjenn, key: "deploy")) == nil)
+        #expect(g.forespørsel(for: NaaSkjerm.Handling(kortId: "annet-kort", valg: .godkjenn, key: "approve")) == nil)
+        #expect(g.forespørsel(for: NaaSkjerm.Handling(kortId: g.id, valg: .godkjenn, key: "approve")) != nil)
     }
 
     // MARK: - godkjenn krever autentisering
@@ -259,16 +305,55 @@ import Testing
         #expect(SvarFeil.ikkeRegistrert(status: 403).visning.melding.contains("403"))
         #expect(SvarFeil.autentiseringUtilgjengelig.visning.melding.contains("Ingenting ble sendt"))
         #expect(SvarFeil.kreverNyttToken.visning.ord == "IKKE INNLOGGET")
-        #expect(Svar.usikkerVisning == SvarVisning(ord: "USIKKERT", melding: "Usikkert om svaret ble registrert. Kortet er borte hvis det gikk gjennom."))
+        let f = forespørsel(Svarvalg(key: "send", label: "✉️ Send"))
+        #expect(Svar.usikkerVisning(for: f).ord == "USIKKERT")
+        #expect(Svar.usikkerVisning(for: f).melding == "«✉️ Send» er sendt, men svaret kom ikke frem. Trykk Oppdater for å se om kortet er borte; da gikk det gjennom.")
+        #expect(Svar.usikkerBorteVisning(for: f).melding.contains("borte fra «Nå»"))
     }
 
     @Test func begrunnelsenBærerFørsteLinjeOgAldriMer() {
         let f = forespørsel(godkjenn, tekst: "\n  Rull ut eksempeltjenesten  \nHemmelig andre linje")
         #expect(f.forsteLinje == "Rull ut eksempeltjenesten")
         #expect(f.begrunnelse == "Godkjenn: Rull ut eksempeltjenesten")
+        #expect(f.rest == "Hemmelig andre linje", "tittel + rest er hele teksten")
         let lang = forespørsel(godkjenn, tekst: String(repeating: "x", count: 300))
         #expect(lang.begrunnelse.count <= "Godkjenn: ".count + 80)
         #expect(lang.begrunnelse.hasSuffix("…"))
         #expect(forespørsel(godkjenn, tekst: "   \n ").forsteLinje == "Godkjenning")
+    }
+
+    // MARK: - S2 og S3
+
+    @Test func sikkerhetsstoppGirEnFeilSomKanForlates() {
+        var s = ibekreftelse(.avslaa)
+        guard case .send(let f) = s.bekreft() else { return }
+        s.stopp(id: f.id + 1)
+        guard case .sender = s.tilstand else { Issue.record("stopp for et annet forsøk skal ignoreres"); return }
+        s.stopp(id: f.id)
+        #expect(s.tilstand == .feil(.internFeil))
+        #expect(SvarFeil.internFeil.visning.melding.contains("Ingenting ble sendt"))
+        #expect(s.kanSvare && !s.opptatt)
+        s.lukk()
+        #expect(s.tilstand == .ingen)
+    }
+
+    @Test func retningstegnFjernesFraVisningenMenIkkeFraModellen() {
+        let farlig = "Godkjenn\u{202E}gnirts\u{2066}x\u{2069}\u{200F}\n\nRest\u{200E}en"
+        let f = forespørsel(godkjenn, tekst: farlig)
+        #expect(f.tekst == farlig, "modellen er uendret")
+        #expect(f.forsteLinje == "Godkjenngnirtsx")
+        #expect(f.rest == "Resten")
+        #expect(f.begrunnelse == "Godkjenn: Godkjenngnirtsx")
+        for c in ["\u{202A}", "\u{202B}", "\u{202C}", "\u{202D}", "\u{202E}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}", "\u{200E}", "\u{200F}"] {
+            #expect(!Svar.Forespørsel.rens("a\(c)b").contains(c))
+        }
+        #expect(NaaSkjerm.Godkjenning.forsteLinje("A\u{202E}B") == "AB")
+    }
+
+    @Test func tittelOgRestMedCrlfOgTomTekst() {
+        let f = forespørsel(godkjenn, tekst: "\r\n Tittel \r\n\r\nLinje 1\r\nLinje 2\r\n")
+        #expect(f.forsteLinje == "Tittel")
+        #expect(f.rest.hasPrefix("Linje 1") && f.rest.hasSuffix("Linje 2"))
+        #expect(forespørsel(godkjenn, tekst: "Bare tittel").rest.isEmpty)
     }
 }

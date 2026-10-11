@@ -11,12 +11,17 @@ public final class SvarTjeneste {
     public typealias Oppfrisk = @MainActor @Sendable () async -> Void
 
     public private(set) var svar = Svar()
+    /// Når siste avgjørelse ble registrert (til kvitteringen).
+    public private(set) var sistFerdig: Date?
 
     @ObservationIgnored private let autentisering: any Autentisering
     @ObservationIgnored private let send: Send
     @ObservationIgnored private let oppfrisk: Oppfrisk
+    @ObservationIgnored private let nå: @Sendable () -> Date
 
-    public init(autentisering: any Autentisering, send: @escaping Send, oppfrisk: @escaping Oppfrisk) {
+    public init(autentisering: any Autentisering, send: @escaping Send, oppfrisk: @escaping Oppfrisk,
+                nå: @escaping @Sendable () -> Date = { Date() }) {
+        self.nå = nå
         self.autentisering = autentisering
         self.send = send
         self.oppfrisk = oppfrisk
@@ -45,7 +50,10 @@ public final class SvarTjeneste {
                 kommando = svar.autentisert(id: forsøk.id, utfall: utfall)
             case .send(let forsøk):
                 // Beltet utenpå selen: maskinen gir bare `.send` for Godkjenn etter `autentisert(.ok)`.
-                guard !forsøk.forespørsel.valg.krevAutentisering || forsøk.autentisert else { return }
+                guard !forsøk.forespørsel.valg.krevAutentisering || forsøk.autentisert else {
+                    svar.stopp(id: forsøk.id)
+                    return
+                }
                 let resultat: Svar.Resultat
                 do {
                     resultat = .utfall(try await send(forsøk.forespørsel.kortId, forsøk.forespørsel.valg.key))
@@ -56,6 +64,7 @@ public final class SvarTjeneste {
                     resultat = .feil(.nettverk("ukjent feil"))
                 }
                 kommando = svar.resultat(id: forsøk.id, resultat)
+                if case .ferdig = svar.tilstand { sistFerdig = nå() }
             case .oppfrisk:
                 await oppfrisk()
                 kommando = .ingenting

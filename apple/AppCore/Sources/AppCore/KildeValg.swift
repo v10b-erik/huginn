@@ -80,6 +80,8 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     /// alltid standard.
     public static let demoSvarPrefiks = "--demo-svar="
     public static let demoLang = "--demo-lang"
+    /// `--demo-handlinger=<en|flere>`: demokortet har én egen handling («✉️ Send») eller to (ingen Godkjenn-vei).
+    public static let demoHandlingerPrefiks = "--demo-handlinger="
     /// `--auto-godkjenn` (synsløkka, bare DEBUG): erstatter lokal autentisering med en som alltid lykkes, så flyten kan
     /// kjøres på simulator uten biometri. Skal aldri ha noen virkning i release.
     public static let autoGodkjenn = "--auto-godkjenn"
@@ -92,16 +94,20 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
         guard tillatLive else { return DemoAvgjort() }
         let atferd = argumenter.first { $0.hasPrefix(demoSvarPrefiks) }
             .flatMap { DemoAvgjort.Atferd(rawValue: String($0.dropFirst(demoSvarPrefiks.count))) } ?? .avgjort
-        return DemoAvgjort(atferd: atferd, langtKort: argumenter.contains(demoLang))
+        let handlinger = argumenter.first { $0.hasPrefix(demoHandlingerPrefiks) }
+            .flatMap { DemoAvgjort.Handlinger(rawValue: String($0.dropFirst(demoHandlingerPrefiks.count))) } ?? .standard
+        return DemoAvgjort(atferd: atferd, langtKort: argumenter.contains(demoLang), handlinger: handlinger)
     }
 
-    public static func brukerAutoGodkjenn(argumenter: [String], tillatLive: Bool) -> Bool {
-        tillatLive && argumenter.contains(autoGodkjenn)
+    /// Bare for en DEMO-kilde: mot en live kilde har ingen auto-oppførsel noen virkning, uansett argumenter. Ellers kunne et
+    /// glemt argument (eller en agent som styrer UI) godkjent et ekte kort uten biometri.
+    public static func brukerAutoGodkjenn(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> Bool {
+        tillatLive && valg.erDemo && argumenter.contains(autoGodkjenn)
     }
 
     /// `godkjenn` eller `avslaa`, eller `nil`.
-    public static func autoSvar(argumenter: [String], tillatLive: Bool) -> NaaSkjerm.Handling.Valg? {
-        guard tillatLive, let a = argumenter.first(where: { $0.hasPrefix(autoSvarPrefiks) }) else { return nil }
+    public static func autoSvar(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> NaaSkjerm.Handling.Valg? {
+        guard tillatLive, valg.erDemo, let a = argumenter.first(where: { $0.hasPrefix(autoSvarPrefiks) }) else { return nil }
         switch a.dropFirst(autoSvarPrefiks.count) {
         case "godkjenn": return .godkjenn
         case "avslaa": return .avslaa
@@ -109,8 +115,8 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
         }
     }
 
-    public static func brukerAutoBekreft(argumenter: [String], tillatLive: Bool) -> Bool {
-        tillatLive && argumenter.contains(autoBekreft)
+    public static func brukerAutoBekreft(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> Bool {
+        tillatLive && valg.erDemo && argumenter.contains(autoBekreft)
     }
 
     /// Kilden og skriveveien til «Nå», bygget sammen så de deler tilstand (demo: hva som er avgjort).
