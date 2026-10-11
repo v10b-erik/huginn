@@ -7,13 +7,17 @@ struct Band: View {
     var verdi: String
     var ord: String? = nil
     var ordTone: NaaSkjerm.Tone = .ok
+    /// Etiketten er dempet i stedet for aksent (aksent er forbeholdt det som krever deg eller pågår).
+    var etikettDempet = false
+    /// Verdien er teknisk (adresse, sti, sha): Martian Mono, aldri Archivo (regel 5).
+    var verdiMono = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s3) {
-            Text(etikett).skrift(.etikettAksent).foregroundStyle(Color(p.aksent))
-            Text(verdi).skrift(.tekst).foregroundStyle(Color(p.tekst)).lineLimit(2)
+            Text(etikett).skrift(etikettDempet ? .etikett : .etikettAksent).foregroundStyle(Color(etikettDempet ? p.dempet : p.aksent))
+            Text(verdi).skrift(verdiMono ? .tid : .tekst).foregroundStyle(Color(p.tekst)).lineLimit(2)
             Spacer(minLength: Theme.Avstand.s2)
             if let ord {
                 Text(ord).skrift(.etikettAksent).foregroundStyle(tekstfarge(ordTone, p))

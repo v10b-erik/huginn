@@ -62,7 +62,9 @@ struct GodkjenningBrikke: View {
 /// Knappene (radius `knapp`, høyde `Maal.knapp`). Handling = fylt periwinkle; sekundær = glass.
 struct KnappStil: ButtonStyle {
     /// `stille`: ingen flate, bare dempet tekst (f.eks. «Prøv demo»); minst like høy som de andre (berøringsmål).
-    enum Rolle { case handling, sekundar, stille }
+    /// `deaktivert`: en handling som ennå ikke kan brukes. Bæres av FORM (ingen fyll, ingen lyskant, bare en strek),
+    /// med dempet tekst i full dekkevne (aldri en blek utgave av den aktive).
+    enum Rolle { case handling, sekundar, stille, deaktivert }
     var rolle: Rolle
     @Environment(\.colorScheme) private var scheme
 
@@ -70,7 +72,7 @@ struct KnappStil: ButtonStyle {
         let p = Theme.palett(for: scheme)
         let form = RoundedRectangle(cornerRadius: Theme.Radius.knapp, style: .continuous)
         configuration.label
-            .foregroundStyle(rolle == .handling ? Color(p.paAksent) : rolle == .stille ? Color(p.dempet) : Color(p.tekst))
+            .foregroundStyle(rolle == .handling ? Color(p.paAksent) : (rolle == .stille || rolle == .deaktivert) ? Color(p.dempet) : Color(p.tekst))
             .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp)
             .background {
                 switch rolle {
@@ -86,6 +88,8 @@ struct KnappStil: ButtonStyle {
                     Color.clear.glassFlate(radius: Theme.Radius.knapp)
                 case .stille:
                     Color.clear
+                case .deaktivert:
+                    form.strokeBorder(Color(p.kant), lineWidth: 1)
                 }
             }
             .contentShape(form)

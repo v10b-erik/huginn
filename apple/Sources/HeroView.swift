@@ -72,16 +72,22 @@ struct HeroView: View {
     }
 }
 
-/// Plattformchippen øverst til høyre: lampe + ord (aldri farge alene). `ok == nil`: vi vet ikke ennå (ingen
-/// data), og da står den som «Tilkobling» uten lampe: ingen farge uten betydning.
+/// Chippen øverst til høyre: lampe + ord (aldri farge alene). Den bærer tilstanden til tilkoblingen når «Nå» ikke
+/// har data (henter, får ikke kontakt, ikke innlogget), ellers plattformstatusen.
 struct StatusChip: View {
-    var ok: Bool?
+    var lampe: Kontakt.Lampe
+    var tekst: String
+    var etikett: String
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s2) {
-            if let ok { Circle().fill(ok ? Color(p.ok) : Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led) }
+            switch lampe {
+            case .ok: Circle().fill(Color(p.ok)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+            case .avvik: Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+            case .ingen: EmptyView()
+            }
             Text(tekst).skrift(.etikett).foregroundStyle(Color(p.tekst)).lineLimit(1)
         }
         .padding(.horizontal, Theme.Avstand.s3)
@@ -92,21 +98,5 @@ struct StatusChip: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(etikett)
         .accessibilityIdentifier("naaStatusChip")
-    }
-
-    private var tekst: String {
-        switch ok {
-        case true?: "Plattform ok"
-        case false?: "Plattform avvik"
-        case nil: "Tilkobling"
-        }
-    }
-
-    private var etikett: String {
-        switch ok {
-        case true?: "Plattform ok"
-        case false?: "Plattform har avvik"
-        case nil: "Tilkobling"
-        }
     }
 }

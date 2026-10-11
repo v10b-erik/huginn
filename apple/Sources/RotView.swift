@@ -5,14 +5,17 @@ import AppCore
 struct RotView: View {
     @State var modell: InnloggingModell
     @State private var visArk = Forhandsvisning.visArkVedStart
+    @State private var kontakt: Kontakt = .ukjent
     private let forhandsvisning: Forhandsvisning
 
     /// Synsløkka (bare DEBUG): forhåndsutfyll feltene og send, med falske verdier, slik at skjermbilder av
     /// feil og «Kobler til» går gjennom den ekte veien. I release er dette alltid tomt.
     struct Forhandsvisning {
-        var adresse = Tilkobling.standardAdresse
+        /// `nil`: den lagrede adressen (ved «Koble til på nytt»), ellers standardadressen.
+        var adresse: String?
         var token = ""
         var send = false
+        var fokusToken = false
 
         /// Synsløkka: åpner tilkoblingsarket ved start (`--vis-ark`). Alltid `false` i release.
         static var visArkVedStart: Bool {
@@ -29,9 +32,10 @@ struct RotView: View {
                 argumenter.first { $0.hasPrefix("\(navn)=") }.map { String($0.dropFirst(navn.count + 1)) }
             }
             return Forhandsvisning(
-                adresse: verdi("--kobling-adresse") ?? Tilkobling.standardAdresse,
+                adresse: verdi("--kobling-adresse"),
                 token: verdi("--kobling-token") ?? "",
-                send: argumenter.contains("--kobling-send")
+                send: argumenter.contains("--kobling-send"),
+                fokusToken: argumenter.contains("--fokus-token")
             )
             #else
             return Forhandsvisning()
@@ -49,10 +53,9 @@ struct RotView: View {
             switch modell.tilstand {
             case .laster:
                 Bakgrunn()
-            case .ikkeKoblet(let feil):
-                kobling(feil: feil, kobler: false)
-            case .kobler:
-                kobling(feil: nil, kobler: true)
+            case .ikkeKoblet, .kobler:
+                // ÉN gren for begge: to grener ville gjenskapt viewet ved hvert forsøk og nullstilt det du har skrevet.
+                kobling
             case .koblet(let t):
                 naa(valg: t.kildeValg, onSvar: nil, nyttToken: { modell.visKobling() })
             case .demo(let rolig):
@@ -62,10 +65,12 @@ struct RotView: View {
         }
         .sheet(isPresented: $visArk) {
             TilkoblingArk(
-                tilstand: modell.tilstand,
-                harLagret: modell.innlogging.lagret != nil,
-                handlingsFeil: modell.innlogging.handlingsFeil,
-                onKobleFra: { visArk = false; modell.kobleFra() },
+                visning: ArkVisning.fra(
+                    tilstand: modell.tilstand, kontakt: kontakt, harLagret: modell.innlogging.lagret != nil,
+                    handlingsFeil: modell.innlogging.handlingsFeil
+                ),
+                // Lukkes bare når frakoblingen faktisk gikk gjennom. Feiler den, blir arket stående og viser feilen.
+                onKobleFra: { if modell.kobleFra() { visArk = false } },
                 onDemo: { visArk = false; modell.prøvDemo() },
                 onKoble: { visArk = false; modell.visKobling() },
                 onBrukLagret: { visArk = false; modell.brukLagret() },
@@ -77,20 +82,31 @@ struct RotView: View {
         #endif
     }
 
-    private func kobling(feil: TilkoblingsFeil?, kobler: Bool) -> some View {
-        KoblingView(
+    private var kobling: some View {
+        var feil: TilkoblingsFeil?
+        var kobler = false
+        switch modell.tilstand {
+        case .ikkeKoblet(let f): feil = f
+        case .kobler: kobler = true
+        default: break
+        }
+        return KoblingView(
             feil: feil, kobler: kobler, kanAvbryte: modell.innlogging.kanAvbryte,
-            forhandsadresse: forhandsvisning.adresse, forhandstoken: forhandsvisning.token, sendVedStart: forhandsvisning.send,
-            onKoble: { adresse, token in Task { await modell.koble(adresse: adresse, token: token) } },
+            // «Koble til på nytt» etter 401 fyller inn den LAGREDE adressen, ikke standardadressen.
+            forhandsadresse: forhandsvisning.adresse ?? modell.innlogging.lagret?.adresse ?? Tilkobling.standardAdresse,
+            forhandstoken: forhandsvisning.token, sendVedStart: forhandsvisning.send, fokusVedStart: forhandsvisning.fokusToken,
+            onKoble: { adresse, token in modell.kobleIBakgrunn(adresse: adresse, token: token) },
             onDemo: { modell.prøvDemo() },
-            onAvbryt: { modell.avbryt() }
+            onAvbryt: { modell.avbryt() },
+            onAvbrytKobling: { modell.avbrytKobling() }
         )
     }
 
     private func naa(valg: KildeValg, onSvar: ((NaaSkjerm.Handling) -> Void)?, nyttToken: (() -> Void)?) -> some View {
         NaaView(
             kilde: valg.lagKilde(), kildeNavn: valg.navn, onSvar: onSvar,
-            onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken
+            onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
+            onKontakt: { kontakt = $0 }
         )
         // Ny tilkobling = fersk modell og kilde (aldri det forrige tokenets data).
         .id(modell.generasjon)

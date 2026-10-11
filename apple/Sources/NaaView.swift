@@ -8,6 +8,7 @@ struct NaaView: View {
     private let onSvar: ((NaaSkjerm.Handling) -> Void)?
     private let onTilkobling: () -> Void
     private let onKobleTilPaaNytt: (() -> Void)?
+    private let onKontakt: (Kontakt) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
 
@@ -17,13 +18,15 @@ struct NaaView: View {
     ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
     init(
         kilde: any NaaKilde, kildeNavn: String, onSvar: ((NaaSkjerm.Handling) -> Void)?,
-        onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil
+        onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil,
+        onKontakt: @escaping (Kontakt) -> Void = { _ in }
     ) {
         _modell = State(initialValue: NaaModell(kilde: kilde))
         self.kildeNavn = kildeNavn
         self.onSvar = onSvar
         self.onTilkobling = onTilkobling
         self.onKobleTilPaaNytt = onKobleTilPaaNytt
+        self.onKontakt = onKontakt
     }
 
     var body: some View {
@@ -53,12 +56,37 @@ struct NaaView: View {
         .background(Bakgrunn())
         .safeAreaInset(edge: .bottom, spacing: 0) { bunn(p) }
         .task { await modell.last() }
+        .onAppear { onKontakt(kontakt) }
+        .onChange(of: kontakt) { _, ny in onKontakt(ny) }
         .onChange(of: scenePhase) { _, ny in
             if ny == .active { Task { await modell.last() } }
         }
     }
 
     // MARK: - deler
+
+    /// Det vi vet om kontakten med trådflata akkurat nå.
+    private var kontakt: Kontakt {
+        if let f = modell.feil { return .feilet(kreverNyttToken: f.kreverNyttToken) }
+        if let t = modell.sisteKontakt { return .ok(t) }
+        return .ukjent
+    }
+
+    /// Plattformstatus når vi har data; ellers tilstanden til selve tilkoblingen (aldri bare et navn).
+    private var chip: StatusChip {
+        if let f = modell.feil {
+            let ord = f.kreverNyttToken ? "Ikke innlogget" : "Får ikke kontakt"
+            return StatusChip(lampe: .avvik, tekst: ord, etikett: ord)
+        }
+        if let s = modell.skjerm {
+            return StatusChip(
+                lampe: s.plattformOk ? .ok : .avvik,
+                tekst: s.plattformOk ? "Plattform ok" : "Plattform avvik",
+                etikett: s.plattformOk ? "Plattform ok" : "Plattform har avvik"
+            )
+        }
+        return StatusChip(lampe: .ingen, tekst: "Henter", etikett: "Henter")
+    }
 
     private func topplinje(_ p: Theme.Palette) -> some View {
         HStack {
@@ -67,7 +95,7 @@ struct NaaView: View {
                 .accessibilityIdentifier("naaDato")
             Spacer()
             // Brikken er også veien til tilkoblingen; uten data (feil, første henting) står den uten lampe.
-            Button(action: onTilkobling) { StatusChip(ok: modell.skjerm?.plattformOk) }
+            Button(action: onTilkobling) { chip }
                 .buttonStyle(.plain)
                 .accessibilityHint("Åpner tilkoblingen")
                 .accessibilityIdentifier("naaTilkoblingKnapp")

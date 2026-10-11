@@ -145,21 +145,57 @@ import AppCore
         #expect(await kall.antall == 0)
     }
 
-    @Test func tilstandenErKoblerMensBekreftelsenPågår() async throws {
-        let m = modell { _ in try await Task.sleep(for: .milliseconds(300)) }
+    @Test func tilstandenErKoblerMensBekreftelsenPågår() async {
+        let port = Port()
+        let m = modell { _ in await port.vent() }
         let oppgave = Task { await m.koble(adresse: adresse, token: token) }
-        try await Task.sleep(for: .milliseconds(60))
+        await ventTil { m.tilstand == .kobler }
         #expect(m.tilstand == .kobler)
+        await port.slipp()
         await oppgave.value
         if case .koblet = m.tilstand {} else { Issue.record("forventet koblet") }
     }
 
-    @Test func avbruttBekreftelseLeggerIkkeSkjermenIKobler() async {
+    @Test func avbruttBekreftelseGirSkjemaUtenFeilrad() async {
         let l = MinneLager()
         let m = modell(l) { _ in throw CancellationError() }
         await m.koble(adresse: adresse, token: token)
-        #expect(m.tilstand == .ikkeKoblet(feil: .ikkeNaabar))
-        #expect(l.innhold == nil)
+        #expect(m.tilstand == .ikkeKoblet(feil: nil), "avbrudd er ikke en feil, og ikke «Trådflata kan ikke nås»")
+        #expect(l.innhold == nil && l.antallSkrivinger == 0)
+    }
+
+    @Test func avbrytMensDetKoblesLagrerIngentingOgGirIngenFeil() async {
+        let l = MinneLager()
+        let port = Port()
+        let m = modell(l) { _ in await port.vent() }
+        let oppgave = Task { await m.koble(adresse: adresse, token: token) }
+        await ventTil { m.tilstand == .kobler }
+        m.avbrytKobling()
+        #expect(m.tilstand == .ikkeKoblet(feil: nil))
+        await port.slipp()  // bekreftelsen kommer likevel tilbake med suksess
+        await oppgave.value
+        #expect(m.tilstand == .ikkeKoblet(feil: nil), "det sene svaret fra det avbrutte forsøket teller ikke")
+        #expect(l.innhold == nil && l.antallSkrivinger == 0)
+    }
+
+    @Test func etAvbruttForsøkOverskriverAldriEtSenere() async {
+        let l = MinneLager()
+        let port1 = Port(), port2 = Port()
+        let m = modell(l) { t in await (t.token == "forste-token-0123456789abcdef" ? port1 : port2).vent() }
+        let første = Task { await m.koble(adresse: adresse, token: "forste-token-0123456789abcdef") }
+        await ventTil { m.tilstand == .kobler }
+        m.avbrytKobling()
+        let andre = Task { await m.koble(adresse: adresse, token: "andre-token-0123456789abcdefg") }
+        await ventTil { m.tilstand == .kobler }
+        await port2.slipp()
+        await andre.value
+        guard case .koblet(let t2) = m.tilstand else { Issue.record("forventet koblet med det andre forsøket"); return }
+        #expect(t2.token == "andre-token-0123456789abcdefg")
+        await port1.slipp()  // det første forsøket lykkes for sent
+        await første.value
+        #expect(l.innhold == t2, "lageret har fortsatt det andre")
+        #expect(m.tilstand == .koblet(t2))
+        #expect(l.antallSkrivinger == 1)
     }
 
     @Test func skriveFeilEtterBekreftelseGirIkkeKobletMedFeil() async {
@@ -182,6 +218,26 @@ import AppCore
         #expect(m.tilstand == .ikkeKoblet(feil: nil))
     }
 
+    @Test func kobleFraSomFeilerGirFalseOgViserFeilenMensManFortsattErKoblet() async {
+        let l = MinneLager()
+        let m = modell(l) { _ in }
+        await m.koble(adresse: adresse, token: token)
+        l.feilVed(.slett, .keychain(status: -1))
+        let g = m.generasjon
+        #expect(m.kobleFra() == false, "arket skal IKKE lukkes")
+        #expect(m.innlogging.handlingsFeil == .kunneIkkeSlette)
+        #expect(m.generasjon == g, "ingenting skiftet skjerm")
+        if case .koblet = m.tilstand {} else { Issue.record("skulle fortsatt vært koblet") }
+        #expect(l.innhold != nil)
+        let visning = ArkVisning.fra(tilstand: m.tilstand, kontakt: .ukjent, harLagret: true, handlingsFeil: m.innlogging.handlingsFeil)
+        #expect(visning.feil == .kunneIkkeSlette && visning.kanKobleFra, "feilen er med i det arket tegner")
+        // Og når slettingen så lykkes, er man koblet fra og arket kan lukkes.
+        l.feilVed(.slett, nil)
+        #expect(m.kobleFra() == true)
+        #expect(m.tilstand == .ikkeKoblet(feil: nil))
+        #expect(m.innlogging.handlingsFeil == nil)
+    }
+
     @Test func modellenLekkerIkkeTokenet() async {
         let m = modell { _ in }
         await m.koble(adresse: adresse, token: "hemmelig-0123456789abcdef0123")
@@ -189,6 +245,26 @@ import AppCore
         dump(m.tilstand, to: &dumpet)
         #expect(!dumpet.contains("hemmelig") && !"\(m.tilstand)".contains("hemmelig"))
     }
+}
+
+/// En port testen åpner selv, så rekkefølgen er deterministisk (ingen søvn og tidsmarginer).
+private actor Port {
+    private var åpen = false
+    private var venter: CheckedContinuation<Void, Never>?
+    func vent() async {
+        if åpen { return }
+        await withCheckedContinuation { venter = $0 }
+    }
+    func slipp() {
+        åpen = true
+        venter?.resume()
+        venter = nil
+    }
+}
+
+/// Gir kontrollen tilbake til hovedaktøren til betingelsen holder (begrenset, så en feil ikke henger testen).
+@MainActor private func ventTil(_ betingelse: () -> Bool) async {
+    for _ in 0..<10_000 where !betingelse() { await Task.yield() }
 }
 
 private actor Teller {

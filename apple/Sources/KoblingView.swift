@@ -10,21 +10,29 @@ struct KoblingView: View {
     var onKoble: (_ adresse: String, _ token: String) -> Void
     var onDemo: () -> Void
     var onAvbryt: () -> Void
+    var onAvbrytKobling: () -> Void
 
     @State private var adresse: String
     @State private var token: String
     @FocusState private var fokus: Felt?
     @Environment(\.colorScheme) private var scheme
     private let sendVedStart: Bool
+    private let fokusVedStart: Bool
 
     enum Felt { case adresse, token }
 
+    /// Der tokenet hentes (ikke hemmelig; selve tokenet er det).
+    static let tokenSted = "~/.config/devrig/huginn-traadflata-tokens"
+
     /// - Parameters:
-    ///   - forhandsadresse/forhandstoken/sendVedStart: bare synsløkka (DEBUG, falske verdier); ellers tomme.
+    ///   - forhandsadresse: lagret adresse når det finnes en, ellers standardadressen.
+    ///   - forhandstoken/sendVedStart/fokusVedStart: bare synsløkka (DEBUG, falske verdier); ellers tomme/av.
     init(
         feil: TilkoblingsFeil?, kobler: Bool, kanAvbryte: Bool,
-        forhandsadresse: String = Tilkobling.standardAdresse, forhandstoken: String = "", sendVedStart: Bool = false,
-        onKoble: @escaping (String, String) -> Void, onDemo: @escaping () -> Void, onAvbryt: @escaping () -> Void
+        forhandsadresse: String = Tilkobling.standardAdresse, forhandstoken: String = "",
+        sendVedStart: Bool = false, fokusVedStart: Bool = false,
+        onKoble: @escaping (String, String) -> Void, onDemo: @escaping () -> Void,
+        onAvbryt: @escaping () -> Void, onAvbrytKobling: @escaping () -> Void
     ) {
         self.feil = feil
         self.kobler = kobler
@@ -32,14 +40,16 @@ struct KoblingView: View {
         self.onKoble = onKoble
         self.onDemo = onDemo
         self.onAvbryt = onAvbryt
+        self.onAvbrytKobling = onAvbrytKobling
         self.sendVedStart = sendVedStart
+        self.fokusVedStart = fokusVedStart
         _adresse = State(initialValue: forhandsadresse)
         _token = State(initialValue: forhandstoken)
     }
 
+    /// Knappen er først aktiv når tokenet er langt nok: valideringen skjer før du trykker, ikke etter.
     private var kanSende: Bool {
-        !kobler && !adresse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !kobler && !adresse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Tilkobling.tokenLangNok(token)
     }
 
     var body: some View {
@@ -47,8 +57,9 @@ struct KoblingView: View {
         ScrollView {
             VStack(spacing: Theme.Avstand.s3) {
                 overskrift(p)
-                if let feil { feilRad(feil, p) }
                 felter(p)
+                    // Dempet mens det kobles: feltene er låst, og det skal sees.
+                    .opacity(kobler ? 0.55 : 1)
             }
             .padding(.horizontal, Theme.Avstand.s4)
             .padding(.top, Theme.Avstand.s4)
@@ -61,6 +72,10 @@ struct KoblingView: View {
         // `safeAreaInset` følger tastaturet, så knappene ligger alltid over det.
         .safeAreaInset(edge: .bottom, spacing: 0) { bunn(p) }
         .task {
+            if fokusVedStart {
+                try? await Task.sleep(for: .milliseconds(400))
+                fokus = .token
+            }
             if sendVedStart { send() }
         }
     }
@@ -74,6 +89,9 @@ struct KoblingView: View {
                 Text("Koble til").skrift(.h2).foregroundStyle(Color(p.tekst))
                     .accessibilityAddTraits(.isHeader)
                 Text("Adressen til trådflata og et enhetstoken. Tokenet lagres bare i Keychain på denne enheten.")
+                    .skrift(.tekst).foregroundStyle(Color(p.dempet))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Tokenet hentes på ygg-v1: \(Text(verbatim: Self.tokenSted).font(SkriftStil.tid.font))")
                     .skrift(.tekst).foregroundStyle(Color(p.dempet))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -97,7 +115,8 @@ struct KoblingView: View {
                         .accessibilityLabel("Adresse til trådflata")
                         .accessibilityIdentifier("kobling.adresse")
                 }
-                FeltRamme(etikett: "Enhetstoken") {
+                if let feil, feil.gjelderAdresse { feilRad(feil, p) }
+                FeltRamme(etikett: "Enhetstoken", trailing: tokenTeller) {
                     SecureField("", text: $token, prompt: Text("Lim inn tokenet").foregroundStyle(Color(p.dempet)))
                         .skrift(.tid)
                         .foregroundStyle(Color(p.tekst))
@@ -110,30 +129,37 @@ struct KoblingView: View {
                         .accessibilityLabel("Enhetstoken")
                         .accessibilityIdentifier("kobling.token")
                 }
+                // Feilen står rett under feltet den gjelder, så skjemaet over ikke flytter seg når den kommer.
+                if let feil, !feil.gjelderAdresse { feilRad(feil, p) }
             }
         }
     }
 
-    /// Avviksrad: rød lampe + ORD + meldingen. Aldri farge alene.
+    /// «4 / 24» til tokenet er langt nok, så «n tegn». Tallet er statusen; ingen farge.
+    private var tokenTeller: String {
+        let n = Tilkobling.tokenLengde(token)
+        return n >= Tilkobling.minsteTokenLengde ? "\(n) tegn" : "\(n) / \(Tilkobling.minsteTokenLengde)"
+    }
+
+    /// Avviksrad: rød lampe + ORD (mono) + forklaringen i Archivo, dempet. Aldri farge alene.
     private func feilRad(_ feil: TilkoblingsFeil, _ p: Theme.Palette) -> some View {
-        Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s4, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s4)) {
-            HStack(alignment: .top, spacing: Theme.Avstand.s3) {
-                Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
-                    .padding(.top, 4)
-                VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
-                    Text(feil.ord).skrift(.status).foregroundStyle(Color(p.feil))
-                    Text(feil.melding).skrift(.undertekst).foregroundStyle(Color(p.tekst))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
+        HStack(alignment: .top, spacing: Theme.Avstand.s3) {
+            Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
+                Text(feil.ord).skrift(.status).foregroundStyle(Color(p.feil))
+                Text(feil.melding).skrift(.tekst).foregroundStyle(Color(p.dempet))
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, Theme.Avstand.s1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(feil.tilgjengeligTekst)
         .accessibilityIdentifier("kobling.feil")
     }
 
-    /// Knappene ligger fast nederst (over tastaturet); den ene fylte flaten er «Koble til».
+    /// Knappene ligger fast nederst (over tastaturet); den ene fylte flaten er «Koble til», og bare når den kan brukes.
     private func bunn(_ p: Theme.Palette) -> some View {
         VStack(spacing: Theme.Avstand.s2) {
             if kobler {
@@ -144,31 +170,33 @@ struct KoblingView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Kobler til trådflata")
                     .accessibilityIdentifier("kobling.kobler")
-            } else {
-                // Fylt flate = handlingen er tilgjengelig. Før feltene er fylt står den som glass med dempet
-                // tekst (en blek fylt flate med hvit tekst er uleselig i lys modus).
-                Button(action: send) { Text("Koble til").skrift(.knapp) }
-                    .buttonStyle(KnappStil(rolle: kanSende ? .handling : .sekundar))
-                    .disabled(!kanSende)
-                    .opacity(kanSende ? 1 : 0.6)
-                    .accessibilityIdentifier("kobling.koble")
-            }
-            HStack(spacing: Theme.Avstand.s2) {
-                Button(action: onDemo) { Text("Prøv demo").skrift(.knapp) }
+                Button(action: onAvbrytKobling) { Text("Avbryt").skrift(.knapp) }
                     .buttonStyle(KnappStil(rolle: .stille))
-                    .disabled(kobler)
-                    .accessibilityIdentifier("kobling.demo")
-                if kanAvbryte {
-                    Button(action: onAvbryt) { Text("Avbryt").skrift(.knapp) }
+                    .accessibilityIdentifier("kobling.avbrytKobler")
+            } else {
+                Button(action: send) { Text("Koble til").skrift(.knapp) }
+                    .buttonStyle(KnappStil(rolle: kanSende ? .handling : .deaktivert))
+                    .disabled(!kanSende)
+                    .accessibilityIdentifier("kobling.koble")
+                HStack(spacing: Theme.Avstand.s2) {
+                    Button(action: onDemo) { Text("Prøv demo").skrift(.knapp) }
                         .buttonStyle(KnappStil(rolle: .stille))
-                        .disabled(kobler)
-                        .accessibilityIdentifier("kobling.avbryt")
+                        .accessibilityIdentifier("kobling.demo")
+                    if kanAvbryte {
+                        Button(action: onAvbryt) { Text("Avbryt").skrift(.knapp) }
+                            .buttonStyle(KnappStil(rolle: .stille))
+                            .accessibilityIdentifier("kobling.avbryt")
+                    }
                 }
             }
-            // Regel 9: hvilken kode som kjører.
-            Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
-                .accessibilityIdentifier("versionLabel")
-                .padding(.top, Theme.Avstand.s1)
+            // Regel 9: hvilken kode som kjører. Venstrestilt, som i «Nå».
+            HStack {
+                Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
+                    .accessibilityIdentifier("versionLabel")
+                Spacer()
+            }
+            .padding(.horizontal, Theme.Avstand.s1)
+            .padding(.top, Theme.Avstand.s1)
         }
         .padding(.horizontal, Theme.Avstand.s4)
         .padding(.top, Theme.Avstand.s3)
@@ -190,18 +218,22 @@ struct KoblingView: View {
     }
 }
 
-/// Et skrivefelt i et innfelt bånd (som `Band`), med sperret etikett over.
+/// Et skrivefelt i et innfelt bånd (som `Band`), med sperret etikett over (flukter med båndets kant).
 private struct FeltRamme<Innhold: View>: View {
     var etikett: String
+    var trailing: String? = nil
     @ViewBuilder var innhold: Innhold
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         VStack(alignment: .leading, spacing: Theme.Avstand.s2) {
-            Text(etikett).skrift(.etikett).foregroundStyle(Color(p.dempet))
-                .padding(.horizontal, Theme.Avstand.s1)
-                .accessibilityHidden(true)
+            HStack {
+                Text(etikett).skrift(.etikett).foregroundStyle(Color(p.dempet))
+                Spacer()
+                if let trailing { Text(trailing).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet)) }
+            }
+            .accessibilityHidden(true)
             innhold
                 .padding(.horizontal, Theme.Avstand.s3)
                 .frame(minHeight: Theme.Maal.beroringMin + Theme.Avstand.s2)

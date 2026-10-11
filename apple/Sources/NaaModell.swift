@@ -8,6 +8,8 @@ final class NaaModell {
     private(set) var skjerm: NaaSkjerm?
     private(set) var feil: NaaFeil?
     private(set) var henter = false
+    /// Når siste henting lyktes (til tilkoblingsarket: «siste kontakt»).
+    private(set) var sisteKontakt: Date?
     private let kilde: any NaaKilde
 
     init(kilde: any NaaKilde) {
@@ -21,6 +23,7 @@ final class NaaModell {
         do {
             let ny = try await kilde.hent()
             skjerm = ny
+            sisteKontakt = Date()
             feil = nil
         } catch {
             // En avbrutt henting (pull-to-refresh som slippes, visning som forsvinner) er ikke en feil.
