@@ -4,8 +4,8 @@ import Foundation
 public enum Kontakt: Equatable, Sendable {
     case ukjent
     case ok(Date)
-    /// Siste henting feilet. `kreverNyttToken`: 401 (tokenet er trukket).
-    case feilet(kreverNyttToken: Bool)
+    /// Siste henting feilet. `kreverNyttToken`: 401 (tokenet er trukket). `sist`: når verten sist svarte (`nil`: aldri).
+    case feilet(kreverNyttToken: Bool, sist: Date? = nil)
 
     public enum Lampe: Sendable, Equatable { case ok, avvik, ingen }
 
@@ -22,7 +22,7 @@ public enum Kontakt: Equatable, Sendable {
         switch self {
         case .ukjent: "HENTER"
         case .ok: "TILKOBLET"
-        case .feilet(let nyttToken): nyttToken ? "IKKE INNLOGGET" : "FÅR IKKE KONTAKT"
+        case .feilet(let nyttToken, _): nyttToken ? "IKKE INNLOGGET" : "FÅR IKKE KONTAKT"
         }
     }
 }
@@ -32,7 +32,11 @@ public enum Kontakt: Equatable, Sendable {
 public struct ArkVisning: Equatable, Sendable {
     public var lampe: Kontakt.Lampe
     public var ord: String
+    /// Teknisk tilleggsinfo (demo: «ingen forbindelse»).
     public var detalj: String?
+    /// ALLTID til stede for en vert: «SISTE KONTAKT 17:54» eller «SISTE KONTAKT ALDRI», så «aldri svart» og
+    /// «ikke bygd» ikke ser like ut. `nil` bare i demo (ingen vert).
+    public var sisteKontakt: String?
     public var adresse: String?
     public var kanKobleFra: Bool
     public var kanByttTilDemo: Bool
@@ -51,23 +55,29 @@ public struct ArkVisning: Equatable, Sendable {
     ) -> ArkVisning {
         switch tilstand {
         case .koblet(let t):
-            var detalj: String?
-            if case .ok(let tid) = kontakt {
-                let k = kalender.dateComponents([.hour, .minute], from: tid)
-                detalj = "siste kontakt " + String(format: "%02d:%02d", k.hour ?? 0, k.minute ?? 0)
+            let sist: Date? =
+                switch kontakt {
+                case .ok(let tid): tid
+                case .feilet(_, let sist): sist
+                case .ukjent: nil
+                }
+            var tekst = "SISTE KONTAKT ALDRI"
+            if let sist {
+                let k = kalender.dateComponents([.hour, .minute], from: sist)
+                tekst = "SISTE KONTAKT " + String(format: "%02d:%02d", k.hour ?? 0, k.minute ?? 0)
             }
             return ArkVisning(
-                lampe: kontakt.lampe, ord: kontakt.ord, detalj: detalj, adresse: t.adresse,
+                lampe: kontakt.lampe, ord: kontakt.ord, detalj: nil, sisteKontakt: tekst, adresse: t.adresse,
                 kanKobleFra: true, kanByttTilDemo: true, kanKoble: false, kanBrukLagret: false, feil: handlingsFeil
             )
         case .demo:
             return ArkVisning(
-                lampe: .ingen, ord: "DEMO", detalj: "ingen forbindelse", adresse: nil,
+                lampe: .ingen, ord: "DEMO", detalj: "ingen forbindelse", sisteKontakt: nil, adresse: nil,
                 kanKobleFra: false, kanByttTilDemo: false, kanKoble: true, kanBrukLagret: harLagret, feil: handlingsFeil
             )
         case .laster, .ikkeKoblet, .kobler:
             return ArkVisning(
-                lampe: .ingen, ord: "IKKE KOBLET", detalj: nil, adresse: nil,
+                lampe: .ingen, ord: "IKKE KOBLET", detalj: nil, sisteKontakt: nil, adresse: nil,
                 kanKobleFra: false, kanByttTilDemo: false, kanKoble: false, kanBrukLagret: false, feil: handlingsFeil
             )
         }

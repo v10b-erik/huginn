@@ -67,7 +67,7 @@ struct NaaView: View {
 
     /// Det vi vet om kontakten med trådflata akkurat nå.
     private var kontakt: Kontakt {
-        if let f = modell.feil { return .feilet(kreverNyttToken: f.kreverNyttToken) }
+        if let f = modell.feil { return .feilet(kreverNyttToken: f.kreverNyttToken, sist: modell.sisteKontakt) }
         if let t = modell.sisteKontakt { return .ok(t) }
         return .ukjent
     }

@@ -14,14 +14,18 @@ import Testing
         let v = vis(.koblet(t), .ok(isoDato("2026-10-11T17:54:30Z")))
         #expect(v.lampe == .ok)
         #expect(v.ord == "TILKOBLET")
-        #expect(v.detalj == "siste kontakt 17:54")
+        #expect(v.sisteKontakt == "SISTE KONTAKT 17:54")
+        #expect(v.detalj == nil)
         #expect(v.adresse == "https://ygg-v1.tail908368.ts.net:8444")
         #expect(v.kanKobleFra && v.kanByttTilDemo && !v.kanKoble)
     }
 
     @Test func feiletHentingGirAvvikMedOrd() {
         let v = vis(.koblet(t), .feilet(kreverNyttToken: false))
-        #expect(v.lampe == .avvik && v.ord == "FÅR IKKE KONTAKT" && v.detalj == nil)
+        #expect(v.lampe == .avvik && v.ord == "FÅR IKKE KONTAKT")
+        #expect(v.sisteKontakt == "SISTE KONTAKT ALDRI", "verten har aldri svart")
+        let tidligere = vis(.koblet(t), .feilet(kreverNyttToken: false, sist: isoDato("2026-10-11T17:54:10Z")))
+        #expect(tidligere.sisteKontakt == "SISTE KONTAKT 17:54", "svarte før, svarer ikke nå: tiden beholdes")
         let u = vis(.koblet(t), .feilet(kreverNyttToken: true))
         #expect(u.lampe == .avvik && u.ord == "IKKE INNLOGGET")
     }
@@ -29,11 +33,12 @@ import Testing
     @Test func førsteHentingErHenterUtenLampe() {
         let v = vis(.koblet(t), .ukjent)
         #expect(v.lampe == .ingen && v.ord == "HENTER")
+        #expect(v.sisteKontakt == "SISTE KONTAKT ALDRI", "linja står alltid for en vert")
     }
 
     @Test func demoHarIngenAdresseOgKanKobleTil() {
         let v = vis(.demo(rolig: false), lagret: true)
-        #expect(v.ord == "DEMO" && v.adresse == nil)
+        #expect(v.ord == "DEMO" && v.adresse == nil && v.sisteKontakt == nil)
         #expect(v.kanKoble && v.kanBrukLagret && !v.kanKobleFra)
         #expect(!vis(.demo(rolig: true), lagret: false).kanBrukLagret)
     }

@@ -17,6 +17,7 @@ struct TilkoblingArk: View {
 
     var body: some View {
         let p = Theme.palett(for: scheme)
+        ScrollView {
         VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
             HStack {
                 Text("Tilkobling").skrift(.etikett).foregroundStyle(Color(p.dempet))
@@ -51,7 +52,11 @@ struct TilkoblingArk: View {
             if visning.kanKobleFra {
                 // Skilt ut med avstand og en strek, og med konsekvensen i klartekst (ikke med farge).
                 Rectangle().fill(Color(p.kant)).frame(height: 1).padding(.top, Theme.Avstand.s4)
-                knapp("Koble fra", id: "tilkobling.kobleFra") { bekreftFra = true }
+                // En sjelden, ikke-angrebar handling: ren tekstknapp uten flate (samme stil som «Prøv demo»),
+                // aldri samme vekt som den lette «Bytt til demo». Ikke rødt: rødt betyr avvik.
+                Button { bekreftFra = true } label: { Text("Koble fra").skrift(.knapp) }
+                    .buttonStyle(KnappStil(rolle: .stille))
+                    .accessibilityIdentifier("tilkobling.kobleFra")
                 Text(ArkVisning.kobleFraKonsekvens).skrift(.tekst).foregroundStyle(Color(p.dempet))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, Theme.Avstand.s1)
@@ -61,7 +66,9 @@ struct TilkoblingArk: View {
         .padding(Theme.Avstand.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { hoyde = $0 }
-        .frame(maxHeight: .infinity, alignment: .top)
+        }
+        // Ruller når innholdet ikke er plass til (store tekststørrelser): «Koble fra» og konsekvenslinja kan ikke havne utenfor.
+        .scrollBounceBehavior(.basedOnSize)
         .background(Bakgrunn())
         .confirmationDialog(ArkVisning.kobleFraTittel, isPresented: $bekreftFra, titleVisibility: .visible) {
             Button(ArkVisning.kobleFraBekreftelse, role: .destructive, action: onKobleFra)
@@ -71,16 +78,17 @@ struct TilkoblingArk: View {
             Text(ArkVisning.kobleFraKonsekvens)
         }
         #if os(iOS)
-        // Arket er akkurat så høyt som innholdet (pluss dra-indikatoren), ikke en fast høyde med dødt rom.
-        .presentationDetents([.height(hoyde + 24)])
+        // Akkurat så høyt som innholdet (pluss dra-indikatoren); `.large` for de største tekststørrelsene.
+        .presentationDetents([.height(hoyde + 8), .large])
         .presentationDragIndicator(.visible)
         #else
         .frame(minWidth: 340, minHeight: 300)
         #endif
     }
 
-    /// Lampe + ORD + når. Aldri farge alene.
+    /// Lampe + ORD, og under den alltid «SISTE KONTAKT …». Aldri farge alene.
     private func status(_ p: Theme.Palette) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
         HStack(spacing: Theme.Avstand.s3) {
             switch visning.lampe {
             case .ok: Circle().fill(Color(p.ok)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
@@ -94,9 +102,13 @@ struct TilkoblingArk: View {
             }
             Spacer(minLength: 0)
         }
+            if let sist = visning.sisteKontakt {
+                Text(sist).skrift(.etikett).foregroundStyle(Color(p.dempet))
+            }
+        }
         .padding(.horizontal, Theme.Avstand.s1)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([visning.ord.lowercased(), visning.detalj].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityLabel([visning.ord.lowercased(), visning.detalj, visning.sisteKontakt?.lowercased()].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("tilkobling.status")
     }
 

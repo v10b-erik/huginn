@@ -59,8 +59,6 @@ struct KoblingView: View {
                 // Forklaringen viker mens du skriver: med tastaturet oppe må begge felt og «Koble til» være synlige uten å rulle.
                 if fokus == nil { overskrift(p).transition(.opacity) }
                 felter(p)
-                    // Dempet mens det kobles: feltene er låst, og det skal sees.
-                    .opacity(kobler ? 0.55 : 1)
             }
             .padding(.horizontal, Theme.Avstand.s4)
             .padding(.top, Theme.Avstand.s4)
@@ -106,7 +104,7 @@ struct KoblingView: View {
     private func felter(_ p: Theme.Palette) -> some View {
         Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s3, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s3)) {
             VStack(alignment: .leading, spacing: Theme.Avstand.s4) {
-                FeltRamme(etikett: "Adresse") {
+                FeltRamme(etikett: "Adresse", laast: kobler) {
                     TextField("", text: $adresse, prompt: Text(verbatim: "https://…").foregroundStyle(Color(p.dempet)))
                         .skrift(.tid)
                         .foregroundStyle(Color(p.tekst))
@@ -119,7 +117,7 @@ struct KoblingView: View {
                         .accessibilityIdentifier("kobling.adresse")
                 }
                 if let feil, feil.gjelderAdresse { feilRad(feil, p) }
-                FeltRamme(etikett: "Enhetstoken", trailing: tokenTeller) {
+                FeltRamme(etikett: "Enhetstoken", trailing: tokenTeller, laast: kobler) {
                     SecureField("", text: $token, prompt: Text("Lim inn tokenet").foregroundStyle(Color(p.dempet)))
                         .skrift(.tid)
                         .foregroundStyle(Color(p.tekst))
@@ -138,10 +136,11 @@ struct KoblingView: View {
         }
     }
 
-    /// «4 / 24» til tokenet er langt nok, så «n tegn». Tallet er statusen; ingen farge.
+    /// «N / 24» hele veien (ett format). Når kravet er oppfylt kommer en liten bekreftelse i ord, ikke et nytt tallformat.
     private var tokenTeller: String {
         let n = Tilkobling.tokenLengde(token)
-        return n >= Tilkobling.minsteTokenLengde ? "\(n) tegn" : "\(n) / \(Tilkobling.minsteTokenLengde)"
+        let teller = "\(n) / \(Tilkobling.minsteTokenLengde)"
+        return n >= Tilkobling.minsteTokenLengde ? teller + " · LANG NOK" : teller
     }
 
     /// Avviksrad: rød lampe + ORD (mono) + forklaringen i Archivo, dempet. Aldri farge alene.
@@ -225,6 +224,8 @@ struct KoblingView: View {
 private struct FeltRamme<Innhold: View>: View {
     var etikett: String
     var trailing: String? = nil
+    /// Låst (mens det kobles): VERDIEN dempes, ikke etiketten (som må holde kontrast).
+    var laast = false
     @ViewBuilder var innhold: Innhold
     @Environment(\.colorScheme) private var scheme
 
@@ -238,6 +239,7 @@ private struct FeltRamme<Innhold: View>: View {
             }
             .accessibilityHidden(true)
             innhold
+                .opacity(laast ? 0.55 : 1)
                 .padding(.horizontal, Theme.Avstand.s3)
                 .frame(minHeight: Theme.Maal.beroringMin + Theme.Avstand.s2)
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous).fill(Color(p.band)))
