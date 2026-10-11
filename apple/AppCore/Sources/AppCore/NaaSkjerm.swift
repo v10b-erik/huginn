@@ -216,8 +216,18 @@ public struct NaaSkjerm: Sendable, Equatable {
         return deler.joined(separator: " · ")
     }
 
-    private static func firstLine(_ tekst: String) -> String {
-        tekst.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? tekst
+    /// Port av serverens `firstLine` (yggdrasil core/mission-feed.ts:48):
+    /// `(s.split("\n").find((l) => l.trim()) ?? s).trim().slice(0, 200)`. Avviket som vises for en godkjenning har
+    /// `tekst` = missionens `goal`, som er akkurat dette, så klienten må regne det ut likt for å kjenne igjen dobbeltgjengeren.
+    /// To Swift-fallgruver: "\r\n" er ÉTT `Character` (derfor deler vi på unicode-skalarer, ikke tegn), og JS teller
+    /// UTF-16-enheter i `slice` (derfor kutter vi på `utf16`, ikke på tegn).
+    static func firstLine(_ tekst: String) -> String {
+        let linjer = tekst.unicodeScalars
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String(String.UnicodeScalarView($0)) }
+        let valgt = linjer.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? tekst
+        let trimmet = valgt.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(decoding: Array(trimmet.utf16.prefix(200)), as: UTF16.self)
     }
 
     private static func samsvarer(avvik: NaaAvvik, kort: NaaKort) -> Bool {

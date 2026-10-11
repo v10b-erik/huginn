@@ -73,6 +73,25 @@ import Testing
         #expect(s.heroUndertekst == "Godkjenning")
     }
 
+    /// Serverens `firstLine` (yggdrasil core/mission-feed.ts:48) er `describe.split("\n").find(l => l.trim()) ?? describe`,
+    /// trimmet og kuttet ved 200 UTF-16-enheter, og det er `goal` på missionen som vises som «venter»-avvik. Klienten må
+    /// regne ut NØYAKTIG det samme, ellers telles én godkjenning to ganger. (I Swift er "\r\n" ÉTT Character, så en naiv
+    /// split på "\n" deler den ikke.)
+    @Test(arguments: [
+        ("\nArmere alarmen", "Armere alarmen"),
+        ("Armere alarmen\r\nmer tekst", "Armere alarmen"),
+        ("  Armere alarmen  \nmer", "Armere alarmen"),
+        ("\n\n  \nTredje linje\nfjerde", "Tredje linje"),
+        (String(repeating: "a", count: 250) + "\nmer", String(repeating: "a", count: 200)),
+    ])
+    func firstLineFølgerServerensRegler(describe: String, serverensMål: String) {
+        let kort = NaaKort(id: "a1", describe: describe, status: "pending")
+        let avvik = NaaAvvik(art: "venter", navn: "alarm-armere-alarmen", tekst: serverensMål, ts: nå)
+        let s = NaaSkjerm(naa: Naa(kort: [kort], avvik: [avvik]), traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1), "én godkjenning telles én gang uansett hvordan describe er brutt")
+        #expect(s.venter.isEmpty)
+    }
+
     @Test func uavhengigVenterAvvikGirEnTilNårDetIkkeErEtKort() {
         let avvik = NaaAvvik(art: "venter", navn: "ko-xyz", tekst: "Bygg klient")
         let kort = NaaKort(id: "a1", describe: "Armere alarmen", status: "pending")

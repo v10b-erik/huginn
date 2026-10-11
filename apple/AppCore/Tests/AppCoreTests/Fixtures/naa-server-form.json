@@ -11,7 +11,7 @@
     }
   ],
   "avvik": [
-    { "art": "venter", "navn": "armere-alarmen", "tekst": "Armere alarmen", "ts": "2026-10-11T20:00:00.000Z", "lenke": "shadow#/m/armere-alarmen" },
+    { "art": "venter", "navn": "alarm-armere-alarmen", "tekst": "Armere alarmen", "ts": "2026-10-11T20:00:00.000Z", "lenke": "shadow#/m/alarm-armere-alarmen" },
     { "art": "venter", "navn": "ko-xyz", "tekst": "Bygg klient", "ts": "2026-10-11T19:30:15.123Z", "lenke": "shadow#/m/ko-xyz" }
   ]
 }
