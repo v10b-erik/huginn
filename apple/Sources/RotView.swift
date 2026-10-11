@@ -103,8 +103,15 @@ struct RotView: View {
     }
 
     private func naa(valg: KildeValg, onSvar: ((NaaSkjerm.Handling) -> Void)?, nyttToken: (() -> Void)?) -> some View {
-        NaaView(
-            kilde: valg.lagKilde(), kildeNavn: valg.navn, smaltKildeNavn: valg.smaltNavn, onSvar: onSvar,
+        #if DEBUG
+        // Synsløkka: `--demo-vert=<host>` får en demo til å se ut som en live-kilde i foten.
+        let demoVert = KildeValg.demoVert(argumenter: ProcessInfo.processInfo.arguments, tillatLive: true)
+        #else
+        let demoVert: String? = nil
+        #endif
+        let fot = valg.fot(demoVert: demoVert)
+        return NaaView(
+            kilde: valg.lagKilde(), kildeNavn: fot.full, smaltKildeNavn: fot.smal, onSvar: onSvar,
             onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
             onKontakt: { kontakt = $0 }
         )

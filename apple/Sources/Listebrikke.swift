@@ -55,20 +55,22 @@ private struct RadView: View {
                     .foregroundStyle(Color(p.tekst))
                     .lineLimit(2).truncationMode(.tail)
                 if let u = rad.undertekst {
-                    // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`), kuttet i halen; ellers to.
+                    // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN, så halen som
+                    // skiller håndtak fra hverandre (`…-eksempel-12`) blir stående. Annen undertekst kuttes i halen.
                     Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
-                        .lineLimit(rad.undertekstLinjer).truncationMode(.tail)
+                        .lineLimit(rad.undertekstLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
                 }
             }
             Spacer(minLength: Theme.Avstand.s2)
             if let ord = rad.ord {
-                // Tilstandsordet (regel 4) krymper aldri; det er teksten til venstre som kuttes.
+                // Tilstandsordet (regel 4) får plass FØR teksten til venstre (layoutPriority), som er den som kuttes.
+                // Ikke `fixedSize`: ved tilgjengelighetsstørrelser på smal skjerm ville minstebredden sprengt brikken.
                 Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
-                    .lineLimit(1).fixedSize().layoutPriority(1)
+                    .lineLimit(1).layoutPriority(1)
             }
             if let tid = rad.tid {
                 Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
-                    .lineLimit(1).fixedSize().layoutPriority(1)
+                    .lineLimit(1).layoutPriority(1)
             }
         }
         .padding(.vertical, Theme.Avstand.s3)

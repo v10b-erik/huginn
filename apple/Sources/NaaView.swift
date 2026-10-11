@@ -12,6 +12,7 @@ struct NaaView: View {
     private let onKontakt: (Kontakt) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// - Parameter onSvar: `nil` = Godkjenn/Avslå er synlige men deaktiverte (live-modus har ingen skriveveier).
     /// - Parameters:
@@ -171,32 +172,62 @@ struct NaaView: View {
         .accessibilityIdentifier("naaFeil")
     }
 
-    private func kildeTekst(_ tekst: String, _ p: Theme.Palette) -> some View {
+    // MARK: fot
+
+    /// «huginn bygg <sha> <klokkeslett>»: hvilken kode som kjører (identitet regel 9). Tiden er byggetidspunktet, ikke nå.
+    /// `brytende`: tillatt å brekke til flere linjer (stablet fot); ellers én linje i sin naturlige bredde.
+    private func versjonTekst(_ p: Theme.Palette, brytende: Bool) -> some View {
+        Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
+            .lineLimit(brytende ? nil : 1)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: brytende ? .infinity : nil, alignment: .leading)
+            .accessibilityIdentifier("versionLabel")
+    }
+
+    private func kildeTekst(_ tekst: String, _ p: Theme.Palette, naturlig: Bool = false) -> some View {
         Text(tekst).skrift(.fot).foregroundStyle(Color(p.dempet)).lineLimit(1).truncationMode(.middle)
+            .fixedSize(horizontal: naturlig, vertical: true)
+            .accessibilityLabel(kildeNavn)
+            .accessibilityIdentifier("naaKilde")
+    }
+
+    /// Versjonen kan ALDRI havne utenfor skjermen eller kuttes (regel 9). Rekkefølge:
+    /// 1. side om side, full kilde-linje («live · ygg-v1»); 2. side om side, bare verten («ygg-v1»);
+    /// 3. stablet: versjonen over, kilde-linja under, begge venstrestilt, og versjonen får brekke i stedet for å flyte ut.
+    /// Fra og med tilgjengelighetsstørrelsene (AX1) er det alltid 3: da er monoteksten bredere enn en smal skjerm.
+    @ViewBuilder private func fot(_ p: Theme.Palette) -> some View {
+        if typeSize.isAccessibilitySize {
+            stablet(p)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Avstand.s3) {
+                    versjonTekst(p, brytende: false).fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    kildeTekst(kildeNavn, p, naturlig: true)
+                }
+                HStack(spacing: Theme.Avstand.s3) {
+                    versjonTekst(p, brytende: false).fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    kildeTekst(smaltKildeNavn, p, naturlig: true)
+                }
+                stablet(p)
+            }
+        }
+    }
+
+    private func stablet(_ p: Theme.Palette) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
+            versjonTekst(p, brytende: true)
+            kildeTekst(kildeNavn, p).frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     /// Tab-bar og fot ligger fast nederst; innholdet blekner under dem.
     private func bunn(_ p: Theme.Palette) -> some View {
         VStack(spacing: Theme.Avstand.s3) {
             Tabbar()
-            HStack(spacing: Theme.Avstand.s3) {
-                // «bygg <sha> <klokkeslett>»: hvilken kode som kjører (regel 9). Tiden er byggetidspunktet, ikke nå.
-                // Versjonen har prioritet og kuttes aldri; kilde-linja til høyre kuttes i midten i stedet.
-                Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
-                    .lineLimit(1).fixedSize(horizontal: true, vertical: false).layoutPriority(1)
-                    .accessibilityIdentifier("versionLabel")
-                Spacer(minLength: 0)
-                // Full kilde-linje når det er plass, ellers bare verten, og til slutt kuttet i midten. Aldri to linjer.
-                ViewThatFits(in: .horizontal) {
-                    kildeTekst(kildeNavn, p).fixedSize(horizontal: true, vertical: false)
-                    kildeTekst(smaltKildeNavn, p).fixedSize(horizontal: true, vertical: false)
-                    kildeTekst(smaltKildeNavn, p)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(kildeNavn)
-                .accessibilityIdentifier("naaKilde")
-            }
-            .padding(.horizontal, Theme.Avstand.s1)
+            fot(p)
+                .padding(.horizontal, Theme.Avstand.s1)
         }
         .padding(.horizontal, Theme.Avstand.s4)
         .padding(.top, Theme.Avstand.s3)
