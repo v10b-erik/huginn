@@ -56,7 +56,8 @@ struct KoblingView: View {
         let p = Theme.palett(for: scheme)
         ScrollView {
             VStack(spacing: Theme.Avstand.s3) {
-                overskrift(p)
+                // Forklaringen viker mens du skriver: med tastaturet oppe må begge felt og «Koble til» være synlige uten å rulle.
+                if fokus == nil { overskrift(p).transition(.opacity) }
                 felter(p)
                     // Dempet mens det kobles: feltene er låst, og det skal sees.
                     .opacity(kobler ? 0.55 : 1)
@@ -68,15 +69,17 @@ struct KoblingView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
+        .animation(.easeOut(duration: Theme.Varighet.brikke), value: fokus)
         .background(Bakgrunn())
         // `safeAreaInset` følger tastaturet, så knappene ligger alltid over det.
         .safeAreaInset(edge: .bottom, spacing: 0) { bunn(p) }
         .task {
+            if sendVedStart { send() }
             if fokusVedStart {
-                try? await Task.sleep(for: .milliseconds(400))
+                // Etter et sendt forsøk venter vi til svaret (feilraden) er på plass.
+                try? await Task.sleep(for: .milliseconds(sendVedStart ? 2500 : 400))
                 fokus = .token
             }
-            if sendVedStart { send() }
         }
     }
 
