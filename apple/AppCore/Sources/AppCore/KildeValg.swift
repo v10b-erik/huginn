@@ -1,23 +1,28 @@
 import Foundation
 
-/// Hvilken kilde «Nå» skal bruke. Ren logikk, så regelen testes uten app: demo er standard, og live
-/// kan bare velges der kallestedet uttrykkelig tillater det (DEBUG-bygg). Ingen Keychain, ingen innlogging ennå.
+/// Hvilken kilde «Nå» skal bruke. Ren logikk, så regelen testes uten app. Miljøvariablene gjelder bare der
+/// kallestedet uttrykkelig tillater det (DEBUG-bygg); den lagrede tilkoblingen leses av `Innlogging`.
 public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     case demo(rolig: Bool)
     case live(url: URL, token: String)
 
+    public static let demo = "--demo"
     public static let rolig = "--demo-rolig"
     public static let miljoURL = "HUGINN_URL"
     public static let miljoToken = "HUGINN_TOKEN"
 
+    /// Presedens: launch-argument `--demo`/`--demo-rolig` > DEBUG-miljø (`HUGINN_URL` + `HUGINN_TOKEN`) > lagret
+    /// tilkobling > ingen kilde (`nil`: da skal «Koble til» vises). Demo er aldri en stille reserve.
     /// - Parameter tillatLive: `false` i release; da ignoreres miljøvariablene helt.
-    public static func velg(argumenter: [String], miljo: [String: String], tillatLive: Bool) -> KildeValg {
+    public static func velg(argumenter: [String], miljo: [String: String], tillatLive: Bool, lagret: Tilkobling? = nil) -> KildeValg? {
+        if argumenter.contains(rolig) { return .demo(rolig: true) }
+        if argumenter.contains(demo) { return .demo(rolig: false) }
         if tillatLive,
            let tekst = miljo[miljoURL], let url = URL(string: tekst), url.scheme?.hasPrefix("http") == true,
            let token = miljo[miljoToken], !token.isEmpty {
             return .live(url: url, token: token)
         }
-        return .demo(rolig: argumenter.contains(rolig))
+        return lagret?.kildeValg
     }
 
     /// Kort navn til foten. Aldri tokenet.

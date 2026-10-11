@@ -118,31 +118,52 @@ import Testing
 
 @Suite struct KildeValgTests {
     private let miljo = ["HUGINN_URL": "https://ygg-v1.example:3449", "HUGINN_TOKEN": "tok-hemmelig-123"]
+    private let lagret = Tilkobling(baseURL: URL(string: "https://lagret.example:8444")!, token: "lagret-hemmelig-0123456789")
 
-    @Test func demoErStandard() {
-        #expect(KildeValg.velg(argumenter: [], miljo: [:], tillatLive: true) == .demo(rolig: false))
-        #expect(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: false) == .demo(rolig: false))
+    @Test func ingenKildeErStandard() {
+        #expect(KildeValg.velg(argumenter: [], miljo: [:], tillatLive: true) == nil)
+        #expect(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: false) == nil, "release ignorerer miljøet helt")
     }
 
-    @Test func demoRoligVelgesMedLaunchArgument() {
+    @Test func demoVelgesMedLaunchArgument() {
+        #expect(KildeValg.velg(argumenter: ["--demo"], miljo: [:], tillatLive: true) == .demo(rolig: false))
         #expect(KildeValg.velg(argumenter: ["--demo-rolig"], miljo: [:], tillatLive: true) == .demo(rolig: true))
+    }
+
+    @Test func launchArgumentSlårMiljøOgLagret() {
+        #expect(KildeValg.velg(argumenter: ["--demo"], miljo: miljo, tillatLive: true, lagret: lagret) == .demo(rolig: false))
+        #expect(KildeValg.velg(argumenter: ["--demo-rolig"], miljo: miljo, tillatLive: false, lagret: lagret) == .demo(rolig: true))
+    }
+
+    @Test func miljøSlårLagretIDebug() {
+        #expect(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: true, lagret: lagret)
+            == .live(url: URL(string: "https://ygg-v1.example:3449")!, token: "tok-hemmelig-123"))
+    }
+
+    @Test func lagretBrukesNårIngetAnnetErValgt() {
+        let forventet = KildeValg.live(url: lagret.baseURL, token: lagret.token)
+        #expect(KildeValg.velg(argumenter: [], miljo: [:], tillatLive: true, lagret: lagret) == forventet)
+        // Release: miljøet ignoreres, men det lagrede gjelder.
+        #expect(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: false, lagret: lagret) == forventet)
     }
 
     @Test func liveKreverBådeUrlOgTokenOgTillatelse() {
         #expect(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: true)
             == .live(url: URL(string: "https://ygg-v1.example:3449")!, token: "tok-hemmelig-123"))
-        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "https://x.example"], tillatLive: true) == .demo(rolig: false))
-        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_TOKEN": "t"], tillatLive: true) == .demo(rolig: false))
-        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "https://x.example", "HUGINN_TOKEN": ""], tillatLive: true) == .demo(rolig: false))
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "https://x.example"], tillatLive: true) == nil)
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_TOKEN": "t"], tillatLive: true) == nil)
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "https://x.example", "HUGINN_TOKEN": ""], tillatLive: true) == nil)
     }
 
-    @Test func ugyldigUrlFallerTilbakeTilDemo() {
-        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "ikke en url", "HUGINN_TOKEN": "t"], tillatLive: true) == .demo(rolig: false))
-        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "file:///etc/passwd", "HUGINN_TOKEN": "t"], tillatLive: true) == .demo(rolig: false))
+    @Test func ugyldigUrlIMiljøIgnoreres() {
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "ikke en url", "HUGINN_TOKEN": "t"], tillatLive: true) == nil)
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "file:///etc/passwd", "HUGINN_TOKEN": "t"], tillatLive: true) == nil)
+        #expect(KildeValg.velg(argumenter: [], miljo: ["HUGINN_URL": "ikke en url", "HUGINN_TOKEN": "t"], tillatLive: true, lagret: lagret)
+            == lagret.kildeValg, "ugyldig miljø faller til det lagrede, ikke til demo")
     }
 
-    @Test func tokenetLekkerAldriViaBeskrivelseEllerNavn() {
-        let v = KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: true)
+    @Test func tokenetLekkerAldriViaBeskrivelseEllerNavn() throws {
+        let v = try #require(KildeValg.velg(argumenter: [], miljo: miljo, tillatLive: true))
         #expect(!v.description.contains("hemmelig") && !v.navn.contains("hemmelig"))
         #expect(!"\(v)".contains("hemmelig") && !String(reflecting: v).contains("hemmelig"))
         #expect(v.navn == "live · ygg-v1.example")
