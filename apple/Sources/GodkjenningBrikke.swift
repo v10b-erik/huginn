@@ -137,7 +137,8 @@ extension GodkjenningBrikke {
         VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
             HStack(spacing: Theme.Avstand.s3) {
                 Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
-                Text(v.ord).skrift(.status).foregroundStyle(Color(p.feil))
+                // Lampen er rød (avvik); ordet står i tekstfarge: rød tekst på kortets tone gir 4,19:1 i lys modus (< 4,5).
+                Text(v.ord).skrift(.status).foregroundStyle(Color(p.tekst))
                     .accessibilityIdentifier("godkjenn.feilOrd")
                 Spacer(minLength: 0)
             }
