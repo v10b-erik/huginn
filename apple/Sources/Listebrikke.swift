@@ -22,14 +22,16 @@ struct Listebrikke: View {
                 }
                 .padding(.bottom, Theme.Avstand.s3)
                 .accessibilityAddTraits(.isHeader)
+                // Strek under overskriften, som i prototypen (første rad har alltid en strek over seg).
+                Rectangle().fill(Color(p.kant)).frame(height: 1)
 
                 if rader.isEmpty, let tomTekst {
                     Text(tomTekst).skrift(.tekst).foregroundStyle(Color(p.dempet))
-                        .padding(.bottom, Theme.Avstand.s3)
+                        .padding(.vertical, Theme.Avstand.s3)
                 }
                 ForEach(Array(rader.enumerated()), id: \.element.id) { i, rad in
                     if i > 0 { Rectangle().fill(Color(p.kant)).frame(height: 1) }
-                    RadView(rad: rad, forst: i == 0)
+                    RadView(rad: rad)
                         .accessibilityIdentifier("\(idPrefiks)Rad\(i)")
                 }
             }
@@ -41,7 +43,6 @@ struct Listebrikke: View {
 
 private struct RadView: View {
     var rad: NaaSkjerm.Rad
-    var forst: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -64,8 +65,7 @@ private struct RadView: View {
                 Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
             }
         }
-        .padding(.top, forst ? 0 : Theme.Avstand.s3)
-        .padding(.bottom, Theme.Avstand.s3)
+        .padding(.vertical, Theme.Avstand.s3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             [rad.tittel, rad.undertekst, rad.ord?.lowercased(), rad.tid].compactMap { $0 }.joined(separator: ", ")
