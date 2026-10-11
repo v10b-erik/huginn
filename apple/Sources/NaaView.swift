@@ -34,6 +34,7 @@ struct NaaView: View {
 
     var body: some View {
         let p = Theme.palett(for: scheme)
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: Theme.Avstand.s3) {
                 topplinje(p)
@@ -50,6 +51,15 @@ struct NaaView: View {
             .padding(.bottom, Theme.Avstand.s4)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+        }
+        #if DEBUG
+        // Synsløkken: `--scroll-venter` åpner med «Venter på deg» øverst (lange skjermer kan ikke vises i ett bilde).
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("--scroll-venter") else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            proxy.scrollTo("naaVenter", anchor: .top)
+        }
+        #endif
         }
         .refreshable { await modell.last() }
         #if DEBUG
@@ -117,6 +127,10 @@ struct NaaView: View {
         }
         if !s.venter.isEmpty {
             Listebrikke(tittel: "Venter på deg", rader: s.venter, idPrefiks: "naaVenterListe")
+                #if DEBUG
+                .padding(.top, ProcessInfo.processInfo.arguments.contains("--scroll-venter") ? 56 : 0)  // under statuslinja i bildet
+                #endif
+                .id("naaVenter")
         }
         Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s5, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s5)) {
             HStack(alignment: .top, spacing: Theme.Avstand.s4) {

@@ -53,16 +53,27 @@ private struct RadView: View {
                 .frame(width: 14, alignment: .leading)
             if typeSize.isAccessibilitySize {
                 // Tilgjengelighetsstørrelser: ord og tid ville tatt hele bredden og klemt teksten til noen få tegn.
-                // Da står de under teksten, venstrestilt.
+                // Da står de under teksten, venstrestilt: ordet først og aldri kuttet, og tiden brekker under ordet
+                // når de to ikke får plass ved siden av hverandre.
                 VStack(alignment: .leading, spacing: Theme.Avstand.s2) {
                     tekst(p)
-                    HStack(spacing: Theme.Avstand.s3) { status(p) }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Avstand.s3) {
+                            ord(p)
+                            tid(p).fixedSize(horizontal: true, vertical: false)
+                        }
+                        VStack(alignment: .leading, spacing: 0) {
+                            ord(p)
+                            tid(p).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
                 Spacer(minLength: 0)
             } else {
                 tekst(p)
                 Spacer(minLength: Theme.Avstand.s2)
-                status(p)
+                ord(p)
+                tid(p)
             }
         }
         .padding(.vertical, Theme.Avstand.s3)
@@ -84,16 +95,20 @@ private struct RadView: View {
         }
     }
 
-    @ViewBuilder private func status(_ p: Theme.Palette) -> some View {
+    /// Tilstandsordet (identitet regel 4: aldri farge alene) står ALLTID helt: høyeste prioritet og `fixedSize`
+    /// i bredden, så det aldri blir «PÅG…». Det er teksten til venstre som kuttes, og tiden som brekker.
+    @ViewBuilder private func ord(_ p: Theme.Palette) -> some View {
         if let ord = rad.ord {
-            // Tilstandsordet (regel 4) får plass FØR teksten til venstre (layoutPriority), som er den som kuttes.
-            // Ikke `fixedSize`: ved tilgjengelighetsstørrelser på smal skjerm ville minstebredden sprengt brikken.
             Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
-                .lineLimit(1).layoutPriority(1)
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false).layoutPriority(2)
         }
+    }
+
+    /// Tiden har lavere prioritet enn ordet; i AX-grenen får den brekke under ordet i stedet for å kuttes.
+    @ViewBuilder private func tid(_ p: Theme.Palette) -> some View {
         if let tid = rad.tid {
             Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
-                .lineLimit(1).layoutPriority(1)
+                .layoutPriority(1)
         }
     }
 }
