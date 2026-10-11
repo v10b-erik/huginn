@@ -32,12 +32,15 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var key: String
         /// Kortets etikett for handlingen («Godkjenn» for `approve`): det brukeren ser og bekrefter.
         public var label: String
+        /// Kortets etikett for handlingen, renset (bare inne i anførselstegn etter «Godkjenn»).
+        public var etikett: String
 
-        public init(kortId: String, valg: Valg, key: String, label: String? = nil) {
+        public init(kortId: String, valg: Valg, key: String, label: String? = nil, etikett: String? = nil) {
             self.kortId = kortId
             self.valg = valg
             self.key = key
             self.label = label ?? (valg == .godkjenn ? "Godkjenn" : "Avslå")
+            self.etikett = etikett ?? self.label
         }
     }
 
@@ -156,7 +159,7 @@ public struct NaaSkjerm: Sendable, Equatable {
                 kildeRen: nil,
                 klasse: nil,
                 opprettet: kort.createdAt,
-                godkjenn: Svarvalg.godkjenn(actions: kort.actions).map { Handling(kortId: kort.id, valg: .godkjenn, key: $0.key, label: $0.label) },
+                godkjenn: Svarvalg.godkjenn(actions: kort.actions).map { Handling(kortId: kort.id, valg: .godkjenn, key: $0.key, label: $0.label, etikett: $0.etikett) },
                 avslaa: Handling(kortId: kort.id, valg: .avslaa, key: Svarvalg.avslaa.key)
             )
         }
@@ -435,7 +438,7 @@ extension NaaSkjerm.Godkjenning {
             valg = .avslaa
         case .godkjenn:
             guard let g = godkjenn, g.key == handling.key, g.kortId == id else { return nil }
-            valg = Svarvalg(key: g.key, label: g.label)
+            valg = Svarvalg(key: g.key, label: g.etikett.isEmpty ? g.label : g.etikett)
         }
         return Svar.Forespørsel(kortId: id, tekst: tittel, valg: valg, kilde: kilde, kildeRen: kildeRen, klasse: klasse)
     }

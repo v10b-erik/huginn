@@ -39,7 +39,7 @@ import Testing
             try await DemoKilde(variant: .avvik, nå: { Date(timeIntervalSince1970: 1_760_000_000) }, avgjort: DemoAvgjort(handlinger: h)).hent()
         }
         #expect(try await skjerm(.standard).godkjenninger[0].godkjenn?.label == "Godkjenn")
-        #expect(try await skjerm(.en).godkjenninger[0].godkjenn?.label == "✉️ Send")
+        #expect(try await skjerm(.en).godkjenninger[0].godkjenn?.label == "Godkjenn «Send»")
         #expect(try await skjerm(.flere).godkjenninger[0].godkjenn == nil)
     }
 

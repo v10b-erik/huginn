@@ -31,8 +31,9 @@ import Testing
         #expect(Svarvalg.godkjenn(actions: [d, a])?.key == "approve")
         let u = NaaKort.Handling(key: "deploy", label: "Rull ut")
         #expect(Svarvalg.godkjenn(actions: [u, d]) == Svarvalg(key: "deploy", label: "Rull ut"), "én egen handling: dens etikett følger med")
-        #expect(Svarvalg.godkjenn(actions: [d])?.key == "approve", "deny blir aldri et Godkjenn")
-        #expect(Svarvalg.godkjenn(actions: [d])?.krevAutentisering == true)
+        #expect(Svarvalg.godkjenn(actions: [u, d])?.label == "Godkjenn «Rull ut»")
+        #expect(Svarvalg.godkjenn(actions: [d]) == nil, "bare deny: ingenting å godkjenne (K1)")
+        #expect(Svarvalg.godkjenn(actions: nil)?.key == "approve" && Svarvalg.godkjenn(actions: [])?.key == "approve", "binært kort: approve")
         let aMedEmoji = NaaKort.Handling(key: "approve", label: "✅ Ja takk")
         #expect(Svarvalg.godkjenn(actions: [aMedEmoji, d])?.label == "Godkjenn", "approve heter alltid Godkjenn")
     }
@@ -51,11 +52,12 @@ import Testing
     @Test func énEgenHandlingBærerSinEtikettHeltTilForespørselenOgBegrunnelsen() throws {
         let g = skjermMed(kort([.init(key: "send", label: "✉️ Send"), .init(key: "deny", label: "Avslå")]))
         let h = try #require(g.godkjenn)
-        #expect(h.key == "send" && h.label == "✉️ Send")
+        #expect(h.key == "send" && h.label == "Godkjenn «Send»" && h.etikett == "Send", "emoji fjernet, aldri etiketten alene")
         let f = try #require(g.forespørsel(for: h))
         #expect(f.valg == Svarvalg(key: "send", label: "✉️ Send"))
         #expect(f.valg.krevAutentisering)
-        #expect(f.begrunnelse == "✉️ Send: Send eposten")
+        #expect(f.begrunnelse == "Godkjenn «Send»: Send eposten")
+        #expect(f.konsekvens == "«Send» utføres så snart du godkjenner. Krever Face ID eller enhetskode.")
         #expect(f.kilde == "kode:eksempel", "risikoinformasjonen følger med til bekreftelsen")
     }
 
@@ -69,9 +71,7 @@ import Testing
         // Avslå virker som vanlig.
         let avslag = try #require(g.forespørsel(for: g.avslaa))
         #expect(avslag.valg == .avslaa && !avslag.valg.krevAutentisering)
-        // Og tilstandsmaskinen får aldri en forespørsel å bekrefte for Godkjenn.
-        var s = Svar()
-        #expect(s.bekreft() == .ingenting)
+        // (Tilstandsmaskinen har ingenting å bekrefte: det finnes ingen forespørsel å gi den. `GodkjennTests` dekker flyten.)
     }
 
     @Test func godkjennMedFremmedNøkkelEllerAnnetKortGirIngenForespørsel() {
@@ -307,7 +307,9 @@ import Testing
         #expect(SvarFeil.kreverNyttToken.visning.ord == "IKKE INNLOGGET")
         let f = forespørsel(Svarvalg(key: "send", label: "✉️ Send"))
         #expect(Svar.usikkerVisning(for: f).ord == "USIKKERT")
-        #expect(Svar.usikkerVisning(for: f).melding == "«✉️ Send» er sendt, men svaret kom ikke frem. Trykk Oppdater for å se om kortet er borte; da gikk det gjennom.")
+        #expect(Svar.usikkerVisning(for: f).melding == "Godkjenn «Send» er sendt, men vi fikk ingen bekreftelse. Trykk Oppdater: er kortet borte, gikk det gjennom. Står det igjen, kan du prøve på nytt.")
+        #expect(Svar.usikkerVisning(for: forespørsel()).melding.hasPrefix("Godkjenning er sendt, men vi fikk ingen bekreftelse."))
+        #expect(Svar.usikkerVisning(for: forespørsel(.avslaa)).melding.hasPrefix("Avslag er sendt"))
         #expect(Svar.usikkerBorteVisning(for: f).melding.contains("borte fra «Nå»"))
     }
 
@@ -355,5 +357,104 @@ import Testing
         #expect(f.forsteLinje == "Tittel")
         #expect(f.rest.hasPrefix("Linje 1") && f.rest.hasSuffix("Linje 2"))
         #expect(forespørsel(godkjenn, tekst: "Bare tittel").rest.isEmpty)
+    }
+
+    // MARK: - E1: etiketten er aldri verbet
+
+    /// Det FORSØKTE EKSEMPELET: en utførende handling merket «Avslå».
+    @Test func handlingMerketAvslåPresenteresSomGodkjennOgSenderSendNøkkelen() throws {
+        let g = skjermMed(kort([.init(key: "send", label: "Avslå"), .init(key: "deny", label: "Avslå")]))
+        let h = try #require(g.godkjenn)
+        #expect(h.label == "Godkjenn «Avslå»", "etiketten står alltid etter Godkjenn, i anførselstegn")
+        #expect(h.label != "Avslå" && g.avslaa.label == "Avslå")
+        #expect(h.key == "send" && g.avslaa.key == "deny")
+        let f = try #require(g.forespørsel(for: h))
+        #expect(f.valg.label == "Godkjenn «Avslå»" && f.valg.key == "send" && f.valg.krevAutentisering && !f.valg.erAvslag)
+        #expect(f.begrunnelse == "Godkjenn «Avslå»: Send eposten")
+        #expect(f.konsekvens.hasPrefix("«Avslå» utføres så snart du godkjenner."))
+        #expect(Svar.usikkerVisning(for: f).melding.hasPrefix("Godkjenn «Avslå» er sendt"))
+        // Og Avslå er alltid deny og alltid «Avslå», uansett hva serveren kalte den.
+        let avslag = try #require(g.forespørsel(for: g.avslaa))
+        #expect(avslag.valg == .avslaa && avslag.valg.label == "Avslå" && !avslag.valg.krevAutentisering)
+        // En handling med nøkkelen «deny» kalt noe annet er fortsatt Avslå.
+        #expect(Svarvalg(key: "deny", label: "Utfør alt").label == "Avslå")
+    }
+
+    @Test func etikettMedRetningstegnRensesOveralt() throws {
+        let farlig = "Se\u{202E}nd\u{2066}x\u{2069}\u{200F}\u{200B}\u{FEFF}"
+        let g = skjermMed(kort([.init(key: "send", label: farlig), .init(key: "deny", label: "Avslå")]))
+        let h = try #require(g.godkjenn)
+        let f = try #require(g.forespørsel(for: h))
+        let alle = [h.label, h.etikett, f.valg.label, f.valg.etikett, f.begrunnelse, f.konsekvens, Svar.usikkerVisning(for: f).melding]
+        let forbudt = Set("\u{202A}\u{202B}\u{202C}\u{202D}\u{202E}\u{2066}\u{2067}\u{2068}\u{2069}\u{200E}\u{200F}\u{200B}\u{2060}\u{FEFF}".unicodeScalars)
+        for t in alle { #expect(!t.unicodeScalars.contains { forbudt.contains($0) }, "tegn i \(t.debugDescription)") }
+        #expect(h.etikett == "Sendx")
+        #expect(h.label == "Godkjenn «Sendx»")
+    }
+
+    @Test func ledendeEmojiOgSymbolerFjernes() {
+        #expect(Svarvalg(key: "send", label: "✉️ Send").etikett == "Send")
+        #expect(Svarvalg(key: "draft", label: "💾 Lagre utkast").etikett == "Lagre utkast")
+        #expect(Svarvalg(key: "x", label: "✅  ✨ Ja   takk ").etikett == "Ja takk")
+        #expect(Svarvalg(key: "x", label: "Send «nå»").etikett == "Send nå", "anførselstegn kan ikke lukke etikettens egne")
+        #expect(Svarvalg(key: "x", label: "Send 📧").etikett == "Send 📧", "bare LEDENDE emoji fjernes")
+    }
+
+    @Test func tomEllerBareEmojiEtikettFallerTilNøkkelen() {
+        #expect(Svarvalg(key: "send", label: "").etikett == "send")
+        #expect(Svarvalg(key: "send", label: "   ").etikett == "send")
+        #expect(Svarvalg(key: "send", label: "✉️").etikett == "send")
+        #expect(Svarvalg(key: "send", label: "\u{202E}\u{200B}").label == "Godkjenn «send»")
+        #expect(Svarvalg(key: "\u{202E}", label: "").etikett == "valg", "også en tom nøkkel gir noe å vise")
+    }
+
+    @Test func langEtikettKuttesMedTrepunktum() {
+        let v = Svarvalg(key: "x", label: String(repeating: "a", count: 80))
+        #expect(v.etikett.count == 24 && v.etikett.hasSuffix("…"))
+        #expect(Svarvalg(key: "x", label: String(repeating: "a", count: 24)).etikett.count == 24)
+        #expect(!Svarvalg(key: "x", label: String(repeating: "a", count: 24)).etikett.contains("…"))
+        #expect(Svarvalg(key: String(repeating: "k", count: 60), label: "").etikett.count == 24)
+    }
+
+    @Test func standardkortetsKonsekvensBærerKortetsMål() {
+        let f = forespørsel(godkjenn, tekst: "Rull ut eksempeltjenesten\n\nDetaljer")
+        #expect(f.konsekvens == "«Rull ut eksempeltjenesten» utføres så snart du godkjenner. Krever Face ID eller enhetskode.")
+        let lang = forespørsel(godkjenn, tekst: String(repeating: "x", count: 200))
+        #expect(lang.konsekvens.contains("…"))
+        #expect(forespørsel(.avslaa).konsekvens == "Forespørselen forkastes. Ingenting utføres.")
+    }
+
+    // MARK: - K1 og K2
+
+    @Test func kortMedBareDenyHarIngenGodkjennVei() {
+        let g = skjermMed(kort([.init(key: "deny", label: "Avslå")]))
+        #expect(g.godkjenn == nil)
+        #expect(g.forespørsel(for: NaaSkjerm.Handling(kortId: g.id, valg: .godkjenn, key: "approve")) == nil)
+        #expect(skjermMed(kort(nil)).godkjenn?.key == "approve")
+        #expect(skjermMed(kort([])).godkjenn?.key == "approve")
+    }
+
+    @Test func kvitteringenLåserIkkeAndreKort() {
+        var s = ibekreftelse(.avslaa)
+        guard case .send(let f) = s.bekreft() else { return }
+        #expect(s.knapper(for: "demo-alarm") == .sender(f.forespørsel))
+        #expect(s.knapper(for: "annet-kort-1") == .av, "andre kort er av mens noe sendes")
+        _ = s.resultat(id: f.id, .utfall(.avgjort))
+        guard case .ferdig = s.tilstand else { Issue.record("ventet .ferdig"); return }
+        #expect(s.knapper(for: "annet-kort-1") == .aktive, "kvitteringen låser ingenting")
+        #expect(s.knapper(for: "demo-alarm") == .aktive)
+        s.velg(forespørsel(godkjenn, id: "annet-kort-1"))
+        if case .bekrefter = s.tilstand {} else { Issue.record("skulle kunne velge et annet kort under kvitteringen") }
+    }
+
+    @Test func usikkerOgAutentiseringSlårAvAndreKort() {
+        var s = ibekreftelse(godkjenn)
+        guard case .autentiser(let fo) = s.bekreft() else { return }
+        #expect(s.knapper(for: "annet-kort-1") == .av)
+        _ = s.autentisert(id: fo.id, utfall: .ok)
+        _ = s.resultat(id: fo.id, .feil(.nettverk("x")))
+        #expect(s.knapper(for: "annet-kort-1") == .av && s.knapper(for: "demo-alarm") == .usikker(fo.forespørsel))
+        s.lukk()
+        #expect(s.knapper(for: "annet-kort-1") == .aktive)
     }
 }

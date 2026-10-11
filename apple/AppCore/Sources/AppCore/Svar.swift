@@ -13,13 +13,19 @@ import Foundation
 //     etter at brukeren har kvittert.
 
 /// Ett av valgene på et kort. Serveren kjenner `deny` (Avslå) og kortets egne handlingsnøkler (typisk `approve`).
+///
+/// **Etiketten er aldri verbet.** Kortets etikett er serverstyrt tekst, og en etikett som «Avslå» på en utførende handling
+/// ville fått en handling til å se ut som det trygge valget. Derfor heter Godkjenn alltid «Godkjenn» (`approve`) eller
+/// `Godkjenn «<etikett>»` (enhver annen nøkkel), og Avslå heter alltid «Avslå» (`deny`), uansett hva serveren kaller dem.
 public struct Svarvalg: Sendable, Equatable {
     public var key: String
-    public var label: String
+    /// Kortets etikett for handlingen, renset (`rens`). Bare til bruk inne i anførselstegn etter «Godkjenn».
+    public private(set) var etikett: String
 
+    /// - Parameter label: kortets etikett slik serveren sendte den. Renses her, så alle veier inn er rene.
     public init(key: String, label: String) {
         self.key = key
-        self.label = label
+        self.etikett = Self.rens(label, nøkkel: key)
     }
 
     /// Avslå er trygt: den utfører ingenting på serveren.
@@ -27,19 +33,60 @@ public struct Svarvalg: Sendable, Equatable {
     /// Alt som ikke er Avslå utfører noe og krever lokal autentisering først.
     public var krevAutentisering: Bool { !erAvslag }
 
+    /// Det brukeren ser: knappen på brikken, arkets tittel og knapp, og begynnelsen på begrunnelsen til systemdialogen.
+    public var label: String {
+        if erAvslag { return "Avslå" }
+        if key == "approve" { return "Godkjenn" }
+        return "Godkjenn «\(etikett)»"
+    }
+
     public static let avslaa = Svarvalg(key: "deny", label: "Avslå")
 
+    private static let maksEtikett = 24
+
+    /// Renser en serverstyrt etikett til noe som kan vises: fjerner kontroll- og formattegn (retningstegn U+202A–202E,
+    /// U+2066–2069, U+200E/F, nullbredde U+200B/U+2060/U+FEFF), anførselstegn «», ledende emoji/symboler (Apple Color
+    /// Emoji er en tredje skrift og bryter identitet regel 5), slår sammen mellomrom, og kutter til 24 tegn med «…».
+    /// Blir den tom, brukes nøkkelen (renset og kuttet på samme måte).
+    public static func rens(_ tekst: String, nøkkel: String) -> String {
+        func grunn(_ s: String) -> String {
+            let skalarer = s.unicodeScalars.filter { sk in
+                switch sk.properties.generalCategory {
+                case .control, .format: return false
+                default: return sk != "«" && sk != "»"
+                }
+            }
+            return String(String.UnicodeScalarView(skalarer)).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        }
+        func erSymbol(_ sk: Unicode.Scalar) -> Bool {
+            switch sk.properties.generalCategory {
+            case .otherSymbol, .mathSymbol, .currencySymbol, .modifierSymbol, .enclosingMark: return true
+            default: return (0xFE00...0xFE0F).contains(sk.value)  // variasjonsvelgere (✉️)
+            }
+        }
+        func kutt(_ s: String) -> String {
+            s.count > maksEtikett ? String(s.prefix(maksEtikett - 1)) + "…" : s
+        }
+        var s = grunn(tekst)
+        while let f = s.unicodeScalars.first, erSymbol(f) || f == " " { s.unicodeScalars.removeFirst() }
+        if !s.isEmpty { return kutt(s) }
+        let n = kutt(grunn(nøkkel))
+        return n.isEmpty ? "valg" : n
+    }
+
     /// Godkjenn-valget for et kort, med kortets EGEN etikett (`approve` heter alltid «Godkjenn»). Appen tilbyr bare
-    /// Godkjenn når det finnes nøyaktig ÉN handling som ikke er `deny` (eller ingen: binært kort, `approve`).
-    /// Har kortet flere, er svaret `nil`: ingen valg-vei finnes, og brukeren må svare i Telegram. Å velge «den første»
-    /// ville sendt en handling brukeren aldri så navnet på. Aldri `deny`: Godkjenn kan ikke ende som et avslag.
+    /// Godkjenn når det finnes nøyaktig ÉN handling som ikke er `deny`, eller kortet ikke har noen handlinger (binært
+    /// kort: `approve`). Har kortet flere, eller bare `deny`, er svaret `nil`: ingen Godkjenn-vei finnes, og brukeren må
+    /// svare i Telegram. Å velge «den første» ville sendt en handling brukeren aldri så navnet på.
     public static func godkjenn(actions: [NaaKort.Handling]?) -> Svarvalg? {
-        let handlinger = (actions ?? []).filter { $0.key != "deny" }
+        let alle = actions ?? []
+        let handlinger = alle.filter { $0.key != "deny" }
         guard handlinger.count <= 1 else { return nil }
-        guard let a = handlinger.first else { return Svarvalg(key: "approve", label: "Godkjenn") }
-        if a.key == "approve" { return Svarvalg(key: "approve", label: "Godkjenn") }
-        let etikett = a.label.trimmingCharacters(in: .whitespacesAndNewlines)
-        return Svarvalg(key: a.key, label: etikett.isEmpty ? a.key : etikett)
+        guard let a = handlinger.first else {
+            // Ingen handlinger: binært kort. Bare `deny` oppgitt: ingenting å godkjenne (serveren ville avvist `approve`).
+            return alle.isEmpty ? Svarvalg(key: "approve", label: "Godkjenn") : nil
+        }
+        return Svarvalg(key: a.key, label: a.label)
     }
 }
 
@@ -166,6 +213,17 @@ public struct Svar: Sendable, Equatable {
         /// Resten av kortteksten (kan være tom). Vises rullbar under overskriften.
         public var rest: String { delt.rest }
 
+        /// «Hva skjer», konkret: Godkjenn utfører noe (kortets mål, eller handlingens etikett), Avslå utfører ingenting.
+        public var konsekvens: String {
+            if valg.erAvslag { return "Forespørselen forkastes. Ingenting utføres." }
+            let hva = valg.key == "approve" ? Self.kutt(forsteLinje, 60) : valg.etikett
+            return "«\(hva)» utføres så snart du godkjenner. Krever Face ID eller enhetskode."
+        }
+
+        private static func kutt(_ s: String, _ maks: Int) -> String {
+            s.count > maks ? String(s.prefix(maks - 1)) + "…" : s
+        }
+
         /// Teksten i systemets autentiseringsdialog: handlingens etikett og første linje, kuttet. Aldri token.
         public var begrunnelse: String {
             let maks = 80
@@ -216,11 +274,17 @@ public struct Svar: Sendable, Equatable {
     public private(set) var tilstand: Tilstand = .ingen
     private var forrigeId = 0
 
+    /// Hva som ble sendt, til meldingene: «Godkjenning», «Avslag», eller `Godkjenn «<etikett>»`.
+    private static func hva(_ f: Forespørsel) -> String {
+        if f.valg.erAvslag { return "Avslag" }
+        return f.valg.key == "approve" ? "Godkjenning" : f.valg.label
+    }
+
     /// Når en forespørsel ikke fikk svar og kortet fortsatt står der.
     public static func usikkerVisning(for f: Forespørsel) -> SvarVisning {
         SvarVisning(
             ord: "USIKKERT",
-            melding: "«\(f.valg.label)» er sendt, men svaret kom ikke frem. Trykk Oppdater for å se om kortet er borte; da gikk det gjennom."
+            melding: "\(hva(f)) er sendt, men vi fikk ingen bekreftelse. Trykk Oppdater: er kortet borte, gikk det gjennom. Står det igjen, kan du prøve på nytt."
         )
     }
 
@@ -228,7 +292,7 @@ public struct Svar: Sendable, Equatable {
     public static func usikkerBorteVisning(for f: Forespørsel) -> SvarVisning {
         SvarVisning(
             ord: "USIKKERT",
-            melding: "«\(f.valg.label)» er sendt, og svaret kom ikke frem, men kortet er borte fra «Nå». Da gikk det trolig gjennom."
+            melding: "\(hva(f)) er sendt, men vi fikk ingen bekreftelse. Kortet er borte fra «Nå», så det gikk trolig gjennom."
         )
     }
 
@@ -247,6 +311,25 @@ public struct Svar: Sendable, Equatable {
         switch tilstand {
         case .autentiserer, .sender, .usikker: false
         default: true
+        }
+    }
+
+    /// Hva et korts knapper gjør nå. Bare en forsendelse som pågår (eller venter på systemet) eller en usikkerhet som ikke
+    /// er kvittert slår av ANDRE korts knapper; en kvittering (`.ferdig`) låser ingenting.
+    public enum KortKnapper: Sendable, Equatable {
+        case aktive
+        /// Noe annet pågår: ingen knapper (ikke deaktiverte).
+        case av
+        case sender(Forespørsel)
+        case usikker(Forespørsel)
+    }
+
+    public func knapper(for kortId: String) -> KortKnapper {
+        switch tilstand {
+        case .sender(let f): f.forespørsel.kortId == kortId ? .sender(f.forespørsel) : .av
+        case .usikker(let f): f.kortId == kortId ? .usikker(f) : .av
+        case .autentiserer: .av
+        case .ingen, .bekrefter, .ferdig, .feil: .aktive
         }
     }
 
