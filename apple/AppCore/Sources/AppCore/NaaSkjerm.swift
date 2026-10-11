@@ -146,10 +146,12 @@ public struct NaaSkjerm: Sendable, Equatable {
         // avvik = alt som avviker unntatt det som bare venter på deg.
         let avvikene = naa.avvik.filter { $0.art != "venter" }
         avvik = avvikene.map {
-            // Serverens «failed» er teknisk; ordet vi viser er norsk. Ukjent tekst bæres uendret.
-            let feilet = $0.tekst.lowercased() == "failed"
+            // Serverens «failed» er teknisk; ordet vi viser er norsk. En jobb som avviker har feilet.
+            // Ukjent tekst bæres uendret som undertekst.
+            let teknisk = $0.tekst.lowercased() == "failed"
+            let feilet = teknisk || $0.art == "jobb"
             return Rad(
-                id: $0.id, tittel: $0.navn, undertekst: feilet ? $0.art : $0.tekst,
+                id: $0.id, tittel: $0.navn, undertekst: teknisk ? $0.art : $0.tekst,
                 ord: feilet ? "FEILET" : "AVVIK", tid: nil, tone: .feil
             )
         }

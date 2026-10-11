@@ -18,7 +18,10 @@ targets:
   App:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources:
+      - Sources
+      - path: Resources
+        excludes: ["**/*.md"]
     dependencies:
       - package: AppCore
     settings:
@@ -28,7 +31,10 @@ targets:
   App-macOS:
     type: application
     platform: macOS
-    sources: [Sources]
+    sources:
+      - Sources
+      - path: Resources
+        excludes: ["**/*.md"]
     dependencies:
       - package: AppCore
 

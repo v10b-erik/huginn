@@ -102,7 +102,7 @@ import Testing
             NaaAvvik(art: "tjeneste", navn: "forgejo", tekst: "failed", ts: isoDato("2026-10-11T09:00:00Z")),
         ])
         let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
-        #expect(s.avvik[0].ord == "AVVIK")
+        #expect(s.avvik[0].ord == "FEILET", "en jobb som avviker har feilet")
         #expect(s.avvik[0].undertekst == "siste kjøring 03:10")
         #expect(s.avvik[1].ord == "FEILET")
         #expect(s.avvik[1].undertekst == "tjeneste")
@@ -111,6 +111,11 @@ import Testing
         #expect(kol.tittel == "Avvik" && kol.verdi == 2 && kol.tone == .feil)
         #expect(kol.tekst == "siden 03:10")
         #expect(kol.strek == nil)
+    }
+
+    @Test func ukjentAvvikstypeGirOrdetAvvik() {
+        let n = Naa(avvik: [NaaAvvik(art: "noeNytt", navn: "x", tekst: "rart")])
+        #expect(NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k).avvik[0].ord == "AVVIK")
     }
 
     @Test func ingenAvvikGirDempetNullOgIngenStrek() throws {
