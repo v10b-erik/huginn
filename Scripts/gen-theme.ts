@@ -88,9 +88,9 @@ function rgba(verdi: string): string {
 }
 
 function tallverdi(verdi: string): string {
-  const m = verdi.match(/^(-?[\d.]+)(px)?$/);
+  const m = verdi.match(/^(-?[\d.]+)(px|em|ms)?$/);
   if (!m) throw new Error(`tallverdi jeg ikke kan lese: «${verdi}»`);
-  return tall(+m[1]);
+  return tall(m[2] === "ms" ? +m[1] / 1000 : +m[1]);  // ms → sekunder
 }
 
 function bygg(): string {
@@ -100,18 +100,31 @@ function bygg(): string {
   const felt = fargenøkler.map((k) => camel(k.slice("--farge-".length)));
   const palett = (m: Egenskaper) =>
     fargenøkler.map((k, i) => `        ${felt[i]}: ${rgba(m.get(k)!)}`).join(",\n");
-  const gruppe = (prefiks: string, enum_: string, dok: string) => {
-    const rader = [...d.mork.keys()]
+  const rader = (prefiks: string, inn: string) =>
+    [...d.mork.keys()]
       .filter((k) => k.startsWith(`--${prefiks}-`))
-      .map((k) => `        public static let ${camel(k.slice(prefiks.length + 3))}: Double = ${tallverdi(d.mork.get(k)!)}`);
-    return `    /// ${dok}\n    public enum ${enum_} {\n${rader.join("\n")}\n    }`;
-  };
+      .map((k) => `${inn}public static let ${camel(k.slice(prefiks.length + 3))}: Double = ${tallverdi(d.mork.get(k)!)}`)
+      .join("\n");
+  const gruppe = (prefiks: string, enum_: string, dok: string) =>
+    `    /// ${dok}\n    public enum ${enum_} {\n${rader(prefiks, "        ")}\n    }`;
+  const undergruppe = (prefiks: string, enum_: string, dok: string) =>
+    `        /// ${dok}\n        public enum ${enum_} {\n${rader(prefiks, "            ")}\n        }`;
+  const typografi = `    /// Typografi: størrelser og linjehøyder i pt, sperring i em, vekt som CSS-tall (400…700).
+    /// Skriftfamiliene er ikke tall og følger med appen (apple/Resources/Fonts/FONTER.md).
+    public enum Typografi {
+${undergruppe("vekt", "Vekt", "Skriftvekt (CSS-tall).")}
+
+${undergruppe("str", "Str", "Skriftstørrelse (pt).")}
+
+${undergruppe("lh", "Lh", "Linjehøyde (pt).")}
+
+${undergruppe("sperring", "Sperring", "Bokstavsperring (em, multipliseres med skriftstørrelsen).")}
+    }`;
   return `// GENERERT fra design/tokens.css av Scripts/gen-theme.ts — ikke rediger for hånd.
 // Endre tokens.css og kjør: bun Scripts/gen-theme.ts   (CI kjører --sjekk).
 //
 // Ren logikk uten SwiftUI, så den testes på Linux (swift test på ygg-v1). Farger er sRGB 0…1; App-målet
-// gjør dem til Color (apple/Sources/ThemeFarge.swift). Typografi og bevegelse speiles her når første
-// Swift-flate trenger dem.
+// gjør dem til Color (apple/Sources/ThemeFarge.swift). Bevegelse speiles her når en flate trenger den.
 
 public enum Theme {
     public struct RGBA: Sendable, Equatable {
@@ -143,6 +156,10 @@ ${gruppe("radius", "Radius", "Radiusskala (pt). Blandes aldri utenfor skalaen.")
 ${gruppe("maal", "Maal", "Mål (pt).")}
 
 ${gruppe("lcd", "Lcd", "LCD-avlesningen: punktmatrise 5×7.")}
+
+${gruppe("varighet", "Varighet", "Varigheter (sekunder). Kurven (--easing-ut) er ikke et tall og velges i viewet.")}
+
+${typografi}
 }
 `;
 }

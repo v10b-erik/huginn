@@ -31,13 +31,17 @@
   --farge-aksent-fyll-1: #5A6CD6;
   --farge-aksent-fyll-2: #4F61CC;
   --farge-aksent-tone: rgba(129, 145, 232, 0.18);
+  --farge-aksent-kant: rgba(129, 145, 232, 0.55);
+  --farge-krever-1: rgba(129, 145, 232, 0.14);
+  --farge-krever-2: rgba(129, 145, 232, 0.04);
+  --farge-skygge: rgba(0, 0, 0, 0);
   --farge-pa-aksent: #FFFFFF;
   --farge-feil: #F27C7C;
   --farge-ok: #6FCFA2;
   /* Flaten tekstrollene måles mot (brikken over bunnen). Testen i AppCore krever >= 4,5. */
   --farge-kontrastflate: #11172A;
 
-  /* --- Typografi (CSS-flater; Swift speiler dette når første Swift-flate bygges) */
+  /* --- Typografi (CSS-flater; Swift speiler det som Theme.Typografi) */
   --font-visning: "Archivo", system-ui, sans-serif;
   --font-mono: "Martian Mono", ui-monospace, monospace;
   --vekt-stor: 700;
@@ -55,10 +59,15 @@
   --str-etikett: 10.5px;
   --lh-etikett: 16px;
   --str-stegetikett: 9px;
+  --str-knapp: 12.5px;
+  --str-tid: 12px;
   --lh-stegetikett: 12px;
+  --lh-knapp: 16px;
+  --lh-tid: 16px;
   --sperring-etikett: 0.14em;
   --sperring-knapp: 0.14em;
   --sperring-hero: -0.01em;
+  --sperring-status: 0.06em;
 
   /* --- Avstand: 4-basert --------------------------------------------------- */
   --avstand-1: 4px;
@@ -111,6 +120,10 @@
   --farge-aksent-fyll-1: #5A6CD6;
   --farge-aksent-fyll-2: #5062CF;
   --farge-aksent-tone: rgba(80, 98, 207, 0.14);
+  --farge-aksent-kant: rgba(80, 98, 207, 0.55);
+  --farge-krever-1: rgba(80, 98, 207, 0.12);
+  --farge-krever-2: rgba(80, 98, 207, 0.04);
+  --farge-skygge: rgba(40, 52, 110, 0.22);
   --farge-pa-aksent: #FFFFFF;
   --farge-feil: #C9414A;
   --farge-ok: #177F52;
@@ -135,6 +148,10 @@
     --farge-aksent-fyll-1: #5A6CD6;
     --farge-aksent-fyll-2: #5062CF;
     --farge-aksent-tone: rgba(80, 98, 207, 0.14);
+    --farge-aksent-kant: rgba(80, 98, 207, 0.55);
+    --farge-krever-1: rgba(80, 98, 207, 0.12);
+    --farge-krever-2: rgba(80, 98, 207, 0.04);
+    --farge-skygge: rgba(40, 52, 110, 0.22);
     --farge-pa-aksent: #FFFFFF;
     --farge-feil: #C9414A;
     --farge-ok: #177F52;

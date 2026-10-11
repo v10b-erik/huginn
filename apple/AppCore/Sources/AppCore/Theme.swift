@@ -2,8 +2,7 @@
 // Endre tokens.css og kjør: bun Scripts/gen-theme.ts   (CI kjører --sjekk).
 //
 // Ren logikk uten SwiftUI, så den testes på Linux (swift test på ygg-v1). Farger er sRGB 0…1; App-målet
-// gjør dem til Color (apple/Sources/ThemeFarge.swift). Typografi og bevegelse speiles her når første
-// Swift-flate trenger dem.
+// gjør dem til Color (apple/Sources/ThemeFarge.swift). Bevegelse speiles her når en flate trenger den.
 
 public enum Theme {
     public struct RGBA: Sendable, Equatable {
@@ -31,6 +30,10 @@ public enum Theme {
         public let aksentFyll1: RGBA
         public let aksentFyll2: RGBA
         public let aksentTone: RGBA
+        public let aksentKant: RGBA
+        public let krever1: RGBA
+        public let krever2: RGBA
+        public let skygge: RGBA
         public let paAksent: RGBA
         public let feil: RGBA
         public let ok: RGBA
@@ -55,6 +58,10 @@ public enum Theme {
         aksentFyll1: RGBA(0.3529, 0.4235, 0.8392),
         aksentFyll2: RGBA(0.3098, 0.3804, 0.8),
         aksentTone: RGBA(0.5059, 0.5686, 0.9098, 0.18),
+        aksentKant: RGBA(0.5059, 0.5686, 0.9098, 0.55),
+        krever1: RGBA(0.5059, 0.5686, 0.9098, 0.14),
+        krever2: RGBA(0.5059, 0.5686, 0.9098, 0.04),
+        skygge: RGBA(0.0, 0.0, 0.0, 0.0),
         paAksent: RGBA(1.0, 1.0, 1.0),
         feil: RGBA(0.949, 0.4863, 0.4863),
         ok: RGBA(0.4353, 0.8118, 0.6353),
@@ -79,6 +86,10 @@ public enum Theme {
         aksentFyll1: RGBA(0.3529, 0.4235, 0.8392),
         aksentFyll2: RGBA(0.3137, 0.3843, 0.8118),
         aksentTone: RGBA(0.3137, 0.3843, 0.8118, 0.14),
+        aksentKant: RGBA(0.3137, 0.3843, 0.8118, 0.55),
+        krever1: RGBA(0.3137, 0.3843, 0.8118, 0.12),
+        krever2: RGBA(0.3137, 0.3843, 0.8118, 0.04),
+        skygge: RGBA(0.1569, 0.2039, 0.4314, 0.22),
         paAksent: RGBA(1.0, 1.0, 1.0),
         feil: RGBA(0.7882, 0.2549, 0.2902),
         ok: RGBA(0.0902, 0.498, 0.3216),
@@ -117,5 +128,56 @@ public enum Theme {
     public enum Lcd {
         public static let pitchHero: Double = 15.0
         public static let prikkRadius: Double = 0.39
+    }
+
+    /// Varigheter (sekunder). Kurven (--easing-ut) er ikke et tall og velges i viewet.
+    public enum Varighet {
+        public static let knapp: Double = 0.12
+        public static let brikke: Double = 0.25
+        public static let ark: Double = 0.35
+    }
+
+    /// Typografi: størrelser og linjehøyder i pt, sperring i em, vekt som CSS-tall (400…700).
+    /// Skriftfamiliene er ikke tall og følger med appen (apple/Resources/Fonts/FONTER.md).
+    public enum Typografi {
+        /// Skriftvekt (CSS-tall).
+        public enum Vekt {
+            public static let stor: Double = 700.0
+            public static let tekst: Double = 500.0
+            public static let etikett: Double = 400.0
+            public static let etikettAksent: Double = 600.0
+        }
+
+        /// Skriftstørrelse (pt).
+        public enum Str {
+            public static let hero: Double = 40.0
+            public static let tall: Double = 38.0
+            public static let h2: Double = 26.0
+            public static let tekst: Double = 15.0
+            public static let etikett: Double = 10.5
+            public static let stegetikett: Double = 9.0
+            public static let knapp: Double = 12.5
+            public static let tid: Double = 12.0
+        }
+
+        /// Linjehøyde (pt).
+        public enum Lh {
+            public static let hero: Double = 38.0
+            public static let tall: Double = 42.0
+            public static let h2: Double = 30.0
+            public static let tekst: Double = 22.0
+            public static let etikett: Double = 16.0
+            public static let stegetikett: Double = 12.0
+            public static let knapp: Double = 16.0
+            public static let tid: Double = 16.0
+        }
+
+        /// Bokstavsperring (em, multipliseres med skriftstørrelsen).
+        public enum Sperring {
+            public static let etikett: Double = 0.14
+            public static let knapp: Double = 0.14
+            public static let hero: Double = -0.01
+            public static let status: Double = 0.06
+        }
     }
 }

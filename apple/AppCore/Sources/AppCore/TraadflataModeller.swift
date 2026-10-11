@@ -58,6 +58,16 @@ extension TraadHolder {
     }
 }
 
+/// Hvor tråden er tilkoblet akkurat nå (`live` i verdandi.ts). Bare `opptatt` brukes av appen.
+public struct TraadLive: Codable, Sendable, Equatable {
+    /// Tråden har en tur i gang akkurat nå.
+    public var opptatt: Bool?
+
+    public init(opptatt: Bool? = nil) {
+        self.opptatt = opptatt
+    }
+}
+
 public struct TraadProsjekt: Codable, Sendable, Equatable {
     public var id: String?
     public var jd: String?
@@ -88,6 +98,7 @@ public struct Traad: Codable, Sendable, Equatable, Identifiable {
     public var tittel: String
     public var sistAktiv: Date
     public var holder: TraadHolder?
+    public var live: TraadLive?
     public var prosjekt: TraadProsjekt?
     public var arkivert: Date?
     /// Uleverte meldinger i kø til tråden.
@@ -101,19 +112,20 @@ public struct Traad: Codable, Sendable, Equatable, Identifiable {
 
     public init(
         id: String, tittel: String, sistAktiv: Date, holder: TraadHolder? = nil,
-        prosjekt: TraadProsjekt? = nil, arkivert: Date? = nil, ko: Int? = nil
+        prosjekt: TraadProsjekt? = nil, arkivert: Date? = nil, ko: Int? = nil, live: TraadLive? = nil
     ) {
         self.id = id
         self.tittel = tittel
         self.sistAktiv = sistAktiv
         self.holder = holder
+        self.live = live
         self.prosjekt = prosjekt
         self.arkivert = arkivert
         self.ko = ko
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, tittel, sistAktiv, holder, prosjekt, arkivert, ko
+        case id, tittel, sistAktiv, holder, live, prosjekt, arkivert, ko
     }
 }
 
@@ -129,6 +141,8 @@ public struct NaaKort: Codable, Sendable, Equatable, Identifiable {
     public var describe: String?
     public var status: String?
     public var expiresAt: Date?
+    public var createdAt: Date?
+    public var agent: String?
     public var threadKey: String?
     public var actions: [Handling]?
 }
