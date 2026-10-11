@@ -204,7 +204,7 @@ import Testing
         let epost = tekst.split(whereSeparator: { " <>\"".contains($0) }).filter { $0.contains("@") }
         #expect(!epost.isEmpty)
         #expect(epost.allSatisfy { $0.hasSuffix("@example.com") }, "bare example.com-adresser")
-        #expect(!tekst.contains("tail908368") && !tekst.contains("ygg-v1"))
+        #expect(!tekst.contains("ts.net") && !tekst.contains("ygg-v1"), "ingen ekte infrastrukturnavn i fixturen")
     }
 
     // MARK: - dobbelttelling (serveren sender hver godkjenning både som kort og som «venter»-avvik)
