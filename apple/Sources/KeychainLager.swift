@@ -3,8 +3,9 @@ import Security
 import AppCore
 
 /// Tilkoblingen i Keychain, og ingen andre steder: ikke `UserDefaults`, ikke fil, ikke logg.
-/// Generisk passord (`service` + `account`), verdi = JSON `{adresse, token}`. Tilgjengelig etter første opplåsing,
-/// bare på denne enheten, ikke iCloud-synk. Feil bærer bare `OSStatus`, aldri verdier.
+/// Generisk passord (`service` + `account`), verdi = JSON `{adresse, token}`. iOS: tilgjengelig etter første
+/// opplåsing, bare på denne enheten, ikke iCloud-synk. macOS: klassisk keychain (se `element`). Feil bærer bare
+/// `OSStatus`, aldri verdier.
 struct KeychainLager: TilkoblingLager, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     static let standardService = "no.huginn.traadflata"
     static let standardAccount = "tilkobling"
@@ -29,18 +30,24 @@ struct KeychainLager: TilkoblingLager, CustomStringConvertible, CustomDebugStrin
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecAttrSynchronizable as String: false,
         ]
-        #if os(macOS)
-        // Data protection-keychainen, ikke den gamle filbaserte (som har en tilgangsdialog per app).
-        q[kSecUseDataProtectionKeychain as String] = true
+        #if os(iOS)
+        // Aldri iCloud-synk. Bare iOS: den klassiske macOS-keychainen kjenner ikke attributtet.
+        q[kSecAttrSynchronizable as String] = false
         #endif
+        // macOS bruker bevisst den klassiske (filbaserte) keychainen, ikke `kSecUseDataProtectionKeychain`:
+        // data protection-keychainen krever entitlements fra en signert app med team, og macOS-målet er usignert
+        // (det ville gitt -34018 ved hver oppstart). NB: macOS-stien er bare bygget og resonnert, aldri kjørt.
         return q
     }
 
-    private static let attributter: [String: Any] = [
-        kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-    ]
+    private static var attributter: [String: Any] {
+        #if os(iOS)
+        [kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        #else
+        [:]
+        #endif
+    }
 
     func les() throws -> Tilkobling? {
         var q = element

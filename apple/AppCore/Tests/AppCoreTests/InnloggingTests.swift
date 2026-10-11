@@ -166,6 +166,27 @@ import Testing
         #expect(i.tilstand == .koblet(lagretT))
     }
 
+    @Test func avbruddUnderKoblerGirSkjemaUtenFeilOgRørerIkkeLageret() throws {
+        let l = MinneLager(lagretT)
+        var i = startet(l)
+        i.visKobling()
+        _ = try kobleKrev(&i, adresse: adresse, token: token)
+        i.avbrytKobler()
+        #expect(i.tilstand == .ikkeKoblet(feil: nil), "avbrudd er ikke en feil")
+        #expect(i.kanAvbryte, "veien tilbake til det lagrede er der fortsatt")
+        #expect(l.innhold == lagretT && l.antallSkrivinger == 0)
+        // Et sent «ok» fra det avbrutte forsøket skal ikke kunne lagre noe.
+        i.kobletOk(Tilkobling(baseURL: URL(string: "https://sen.example")!, token: token))
+        #expect(i.tilstand == .ikkeKoblet(feil: nil))
+        #expect(l.innhold == lagretT)
+    }
+
+    @Test func avbrytKoblerGjelderBareUnderKobler() {
+        var i = startet(MinneLager(lagretT))
+        i.avbrytKobler()
+        #expect(i.tilstand == .koblet(lagretT))
+    }
+
     // MARK: - koble fra
 
     @Test func kobleFraSletterFraLageret() {

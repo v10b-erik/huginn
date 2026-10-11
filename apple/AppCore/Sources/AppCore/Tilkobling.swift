@@ -25,6 +25,14 @@ public enum TilkoblingsFeil: Error, Sendable, Equatable {
     case kunneIkkeLese
     case kunneIkkeSlette
 
+    /// Hører feilen til adressefeltet (ellers til token-feltet)? Styrer hvor feilraden står.
+    public var gjelderAdresse: Bool {
+        switch self {
+        case .adresseMangler, .adresseUgyldig, .adresseIkkeHttps: true
+        default: false
+        }
+    }
+
     /// Kort tilstandsord (aldri farge alene), vist i rødt over meldingen.
     public var ord: String {
         switch self {
@@ -49,7 +57,7 @@ public enum TilkoblingsFeil: Error, Sendable, Equatable {
         case .ikkeNaabar: "Trådflata kan ikke nås. Sjekk adressen, og at tailnettet (Tailscale) er på."
         case .tjenesteFeil(let s): "Trådflata svarte med en feil (HTTP \(s)). Sjekk adressen, eller prøv igjen om litt."
         case .svarIkkeForstaatt: "Svaret fra trådflata ble ikke forstått. Er adressen riktig, og er appen og trådflata av samme versjon?"
-        case .kunneIkkeLagre: "Tilkoblingen ble bekreftet, men kunne ikke lagres i Keychain. Ingenting er lagret."
+        case .kunneIkkeLagre: "Tilkoblingen ble bekreftet, men kunne ikke lagres i Keychain. Den nye tilkoblingen ble ikke lagret."
         case .kunneIkkeLese: "Keychain kunne ikke leses, så en lagret tilkobling er ikke brukt. Ingenting er endret."
         case .kunneIkkeSlette: "Tilkoblingen kunne ikke fjernes fra Keychain. Du er fortsatt koblet til."
         }
@@ -74,6 +82,13 @@ public struct Tilkobling: Equatable, Sendable, CustomStringConvertible, CustomDe
         self.baseURL = baseURL
         self.token = token
     }
+
+    /// Antall tegn i tokenet slik det ville blitt lagret (trimmet). Vises mot minstekravet mens du skriver.
+    public static func tokenLengde(_ token: String) -> Int {
+        token.trimmingCharacters(in: .whitespacesAndNewlines).count
+    }
+
+    public static func tokenLangNok(_ token: String) -> Bool { tokenLengde(token) >= minsteTokenLengde }
 
     public var adresse: String { baseURL.absoluteString }
     public var vert: String { baseURL.host ?? "?" }

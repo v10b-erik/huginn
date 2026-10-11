@@ -80,6 +80,12 @@ public struct Innlogging {
         }
     }
 
+    /// Brukeren avbrøt «Kobler til»: tilbake til skjemaet uten feil (avbrudd er ikke en feil) og uten å røre lageret.
+    public mutating func avbrytKobler() {
+        guard case .kobler = tilstand else { return }
+        tilstand = .ikkeKoblet(feil: nil)
+    }
+
     /// Bekreftelsen feilet: tilbake til skjemaet med årsaken. Lageret røres ikke.
     public mutating func kobletFeilet(_ feil: TilkoblingsFeil) {
         guard case .kobler = tilstand else { return }

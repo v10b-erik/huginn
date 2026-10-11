@@ -60,14 +60,11 @@ import AppCore
         let l = lager()
         defer { try? l.slett() }
         try l.lagre(tilkobling())
-        var q: [String: Any] = [
+        let q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: l.service,
             kSecAttrAccount as String: l.account, kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnAttributes as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
         ]
-        #if os(macOS)
-        q[kSecUseDataProtectionKeychain as String] = true
-        #endif
         var svar: CFTypeRef?
         #expect(SecItemCopyMatching(q as CFDictionary, &svar) == errSecSuccess)
         let attr = try #require(svar as? [String: Any])
@@ -93,12 +90,7 @@ import AppCore
             kSecAttrAccount as String: l.account, kSecAttrSynchronizable as String: false,
             kSecValueData as String: Data("ikke json, hemmelig".utf8),
         ]
-        #if os(macOS)
-        var m = q; m[kSecUseDataProtectionKeychain as String] = true
-        #expect(SecItemAdd(m as CFDictionary, nil) == errSecSuccess)
-        #else
         #expect(SecItemAdd(q as CFDictionary, nil) == errSecSuccess)
-        #endif
         do { _ = try l.les(); Issue.record("skulle kastet") }
         catch { #expect(error as? LagerFeil == .ugyldigInnhold) }
     }
