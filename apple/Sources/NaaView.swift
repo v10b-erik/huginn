@@ -75,7 +75,6 @@ struct NaaView: View {
                 forespørsel: data.forespørsel, autentiserer: data.autentiserer,
                 onBekreft: { modell.bekreftSvar() }, onAvbryt: { modell.lukkSvar() }
             )
-            .presentationDetents([.large])
             .interactiveDismissDisabled(data.autentiserer)
         }
         .onChange(of: arkData, initial: true) { _, ny in ark = ny }
