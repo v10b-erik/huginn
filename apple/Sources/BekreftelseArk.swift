@@ -24,24 +24,17 @@ struct BekreftelseArk: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("godkjenn.tittel")
 
-            // Hele teksten, rullbar. Den tar all ledig høyde; knappene under er alltid synlige.
-            ScrollView {
-                Text(forespørsel.tekst)
-                    .skrift(.tekst).foregroundStyle(Color(p.tekst))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(Theme.Avstand.s4)
-                    .textSelection(.enabled)
+            // Hele teksten. Kort tekst gir en kort flate; lang tekst tar all ledig høyde og ruller (knappene under er
+            // alltid synlige).
+            ViewThatFits(in: .vertical) {
+                ramme(tekstFlate)
+                ramme(ScrollView { tekstFlate })
             }
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous).fill(Color(p.band)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous).strokeBorder(Color(p.kant), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous))
+            .frame(maxHeight: .infinity, alignment: .top)
             .accessibilityLabel("Kort: \(forespørsel.tekst)")
             .accessibilityIdentifier("godkjenn.tekst")
 
-            Band(
-                etikett: "Hva skjer", verdi: konsekvens,
-                ord: godkjenner ? "Nå" : nil, ordTone: .aksent, etikettDempet: true
-            )
+            Band(etikett: "Hva skjer", verdi: konsekvens, etikettDempet: true)
             .accessibilityIdentifier("godkjenn.konsekvens")
 
             VStack(spacing: Theme.Avstand.s2) {
@@ -76,6 +69,23 @@ struct BekreftelseArk: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 520)
         #endif
+    }
+
+    private var tekstFlate: some View {
+        Text(forespørsel.tekst)
+            .skrift(.tekst).foregroundStyle(Color(Theme.palett(for: scheme).tekst))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Avstand.s4)
+            .textSelection(.enabled)
+    }
+
+    private func ramme<V: View>(_ innhold: V) -> some View {
+        let p = Theme.palett(for: scheme)
+        let form = RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous)
+        return innhold
+            .background(form.fill(Color(p.band)))
+            .overlay(form.strokeBorder(Color(p.kant), lineWidth: 1))
+            .clipShape(form)
     }
 
     private var konsekvens: String {
