@@ -1,0 +1,44 @@
+# systemd-systemenhet for huginn-serveren (bun) på ygg-v1. Installeres av
+# Scripts/install-system.sh (root, én gang). Deployes og restartes BARE av tillitskjernens
+# deploy-motor (produkt-deploy): den bytter /opt/huginn → /opt/releases/huginn/<sha>, skriver
+# GIT_SHA i /etc/huginn/server.env og verifiserer /health mot sha-en før vakttiden.
+# /opt/huginn/bin/bun er en lenke i releasen til /opt/bun/bin/bun (erklæringens «lenker»).
+[Unit]
+Description=huginn server (bun) — navet for Basic-appen
+After=network-online.target postgresql@17-main.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+User=huginn
+Group=huginn
+WorkingDirectory=/opt/huginn/server
+ExecStart=/opt/huginn/bin/bun src/index.ts
+EnvironmentFile=/etc/huginn/server.env
+StateDirectory=huginn
+StateDirectoryMode=0700
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+MemoryMax=512M
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

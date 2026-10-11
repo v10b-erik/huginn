@@ -10,6 +10,12 @@ Prosjektmappe (JD 21.22): `~/basic/20-29_personal/21_tech/21.22_huginn`.
 - **Remotes:** `origin` = `git@github.com:v10b-erik/huginn.git`, `platform` =
   `ssh://git@100.64.130.46:2222/ygg/huginn.git`.
 - **Database:** Postgres 17 på ygg-v1 (`127.0.0.1:5433`), `huginn` og `huginn_test`.
+- **Drift på ygg-v1:** systemenheten `huginn-server` (bruker `huginn`, port **3030** på
+  loopback, `EnvironmentFile=/etc/huginn/server.env` med `DATABASE_URL`/`PORT`/`GIT_SHA`).
+  Engangsoppsett: `sudo Scripts/install-system.sh` (bruker, env-fil, enhet — lager ikke
+  `/opt/huginn`, det er motorens lenke). Erklæringen er kjernens: `~/code/kjerne/produkter/huginn.json`
+  (bygg = `bun install --frozen-lockfile` i rot, sjekk = `/health` med `ok:true` og `sha:$SHA`).
+  Deploy: push `platform` main → `Scripts/deploy-server.sh --vent`.
 
 ## Økter starter i repoet: `p <produkt> [gren]`
 `p` (`~/basic/00-09_global/p/`) viser et prosjektkort (JD, gren, worktrees, CI,
