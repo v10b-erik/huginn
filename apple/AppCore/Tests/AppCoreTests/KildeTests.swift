@@ -137,8 +137,23 @@ import Testing
         #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: miljo, tillatLive: true, lagret: lagret) == .demo(rolig: false, ekte: true))
         #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: [:], tillatLive: false) == nil, "release ignorerer --demo-ekte")
         #expect(KildeValg.velg(argumenter: ["--demo-ekte"], miljo: [:], tillatLive: false, lagret: lagret) == lagret.kildeValg)
-        #expect(KildeValg.demo(rolig: false, ekte: true).navn == "demo · ekte")
+        #expect(KildeValg.demo(rolig: false, ekte: true).navn == "demo · ekte form")
         #expect(KildeValg.demo(rolig: false, ekte: true).erDemo)
+    }
+
+    @Test func demoVertGirLiveFormIFotenBareINåDebug() throws {
+        let args = ["--demo-ekte", "--demo-vert=ygg-v1.tailEXAMPLE.ts.net"]
+        #expect(KildeValg.demoVert(argumenter: args, tillatLive: true) == "ygg-v1.tailEXAMPLE.ts.net")
+        #expect(KildeValg.demoVert(argumenter: args, tillatLive: false) == nil, "release ignorerer --demo-vert")
+        #expect(KildeValg.demoVert(argumenter: ["--demo-vert="], tillatLive: true) == nil)
+        #expect(KildeValg.demoVert(argumenter: ["--demo-ekte"], tillatLive: true) == nil)
+
+        let demo = KildeValg.demo(rolig: false, ekte: true)
+        let fot = demo.fot(demoVert: "ygg-v1.tailEXAMPLE.ts.net")
+        #expect(fot.full == "live · ygg-v1" && fot.smal == "ygg-v1")
+        #expect(demo.fot(demoVert: nil) == ("demo · ekte form", "demo · ekte form"))
+        let live = KildeValg.live(url: try #require(URL(string: "https://x.example")), token: "t")
+        #expect(live.fot(demoVert: "annen.example").full == "live · x", "gjelder bare demo; live bruker sin egen vert")
     }
 
     @Test func launchArgumentSlårMiljøOgLagret() {

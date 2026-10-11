@@ -97,18 +97,75 @@ import Testing
     }
 
     @Test func flerlinjetMålBlirFørsteLinjeMedNormalisertWhitespace() {
-        #expect(venterRad(navn: "m", tekst: "Bygg   klienten\n\nmer tekst under").tittel == "Bygg klienten")
+        #expect(venterRad(navn: "m", tekst: "Bygg   klienten\n\nmer tekst under").tittel == "Bygg klienten", "linjer etter den første forkastes")
         #expect(venterRad(navn: "m", tekst: "\n  \t Første\tmed\u{00A0}nbsp  \r\nandre").tittel == "Første med nbsp")
         #expect(venterRad(navn: "m", tekst: "\r\n\r\nTredje\r\nfjerde").tittel == "Tredje")
         #expect(venterRad(navn: "m", tekst: "  Ett  ord  ").tittel == "Ett ord")
     }
 
     @Test func langtTokenUtenMellomromBæresUkuttetTilViewet() {
-        let token = "EXAMPLE" + String(repeating: "x0", count: 57)  // 121 tegn uten mellomrom
+        let token = "EXAMPLE" + String(repeating: "x0", count: 57)  // 121 tegn uten mellomrom, verken URL eller adresse
         let r = venterRad(navn: "m", tekst: "Svar på \(token)")
         #expect(r.tittel == "Svar på \(token)")
         #expect(r.tittel.contains(token), "modellen kutter ikke; viewet kutter i halen med lineLimit(2)")
         #expect(r.undertekst == "m")
+    }
+
+    // MARK: - teknisk støy ut av tittelen (identitet regel 5)
+
+    @Test(arguments: [
+        ("Faktura-varsel fra leverandør <varsler+acct_EXAMPLE12345678abcdef@example.com> trenger svar", "Faktura-varsel fra leverandør trenger svar"),
+        ("Avklar utdatert pull request https://git.example.com/eksempel/repo/pull/8", "Avklar utdatert pull request"),
+        ("Svar til <post@example.com>:", "Svar til"),
+        ("Svar til Per (<per@example.com>)", "Svar til Per"),
+        ("Send til post@example.com i dag", "Send til i dag"),
+        ("Ingen støy her", "Ingen støy her"),
+        ("Er 5 < 7 og 9 > 3", "Er 5 < 7 og 9 > 3"),
+        ("Se <Viktig sak> nå", "Se <Viktig sak> nå"),
+    ])
+    func teknisktInnholdFjernesFraTittelen(inn: String, ut: String) {
+        #expect(venterRad(navn: "m", tekst: inn).tittel == ut)
+    }
+
+    @Test(arguments: [
+        "Se https://git.example.com/eksempel/repo/pull/8",
+        "<a@example.com>",
+        "a@example.com",
+        "https://git.example.com/eksempel",
+        "<a@example.com> https://git.example.com/x",
+        "Åp <a@example.com>",
+    ])
+    func forLiteIgjenBeholderHeleOgErAldriTom(inn: String) {
+        let r = venterRad(navn: "m", tekst: inn)
+        #expect(r.tittel == inn, "mindre enn tre tegn menneskelig innhold: behold originalen")
+        #expect(!r.tittel.isEmpty)
+    }
+
+    @Test func rensingenRørerIkkeHåndtaketOgVoiceOverBrukerRentMål() {
+        let r = venterRad(navn: "post-faktura-eksempel-7", tekst: "Svar <a@example.com> snarest")
+        #expect(r.tittel == "Svar snarest")
+        #expect(r.undertekst == "post-faktura-eksempel-7")
+        #expect(r.talesTekst == "Svar snarest, venter")
+    }
+
+    // MARK: - usynlige tegn og store/små bokstaver
+
+    @Test(arguments: ["\u{200B}", "\u{2060}", "\u{FEFF}", "\u{200B}\u{FEFF} \u{2060}\n\u{200C}", " \u{200D} "])
+    func bareUsynligeTegnFallerTilHåndtaket(tekst: String) {
+        let r = venterRad(navn: "ko-xyz", tekst: tekst)
+        #expect(r.tittel == "ko-xyz")
+        #expect(r.undertekst == nil)
+    }
+
+    @Test func usynligeTegnIMålFjernesOgFørsteSynligeLinjeBrukes() {
+        #expect(venterRad(navn: "m", tekst: "\u{200B}\n\u{FEFF}Bygg\u{200B} klient").tittel == "Bygg klient")
+    }
+
+    @Test func håndtakSomBareErLiktMedAnnenCaseVisesIkkeToGanger() {
+        let r = venterRad(navn: "KO-XYZ", tekst: "ko-xyz")
+        #expect(r.tittel == "ko-xyz")
+        #expect(r.undertekst == nil)
+        #expect(venterRad(navn: "ko-xyz", tekst: "  KO-Xyz \n").undertekst == nil)
     }
 
     @Test func andreRaderBeholderVanligVoiceOverRekkefølge() {
@@ -119,14 +176,14 @@ import Testing
 
     // MARK: - ekte form (syntetisk): lange mål, lang kalendertittel, heldag, ingen kort
 
-    @Test func ekteFormFixturenGirToVenterRaderMedMåletSomTittel() throws {
+    @Test func ekteFormFixturenGirToVenterRaderMedRentMålSomTittel() throws {
         let s = NaaSkjerm(naa: try naa("naa-ekte-form.json"), traader: [], nå: isoDato("2026-10-11T15:52:00Z"), kalender: k)
         #expect(s.godkjenninger.isEmpty)
         #expect(s.tilstand == .krever(2))
-        #expect(s.venter.count == 2)
-        #expect(s.venter[0].tittel.hasPrefix("Faktura-varsel fra leverandør <varsler+acct_EXAMPLE"))
+        #expect(s.venter.map(\.tittel) == ["Faktura-varsel fra leverandør trenger svar", "Avklar utdatert pull request"],
+                "adresse og URL er tatt ut av tittelen")
         #expect(s.venter.map(\.undertekst) == ["post-faktura-eksempel-7", "repo-utdatert-pr-eksempel-12"])
-        #expect(s.venter[1].tittel.split(separator: " ").last!.count > 100, "et token på over 100 tegn uten mellomrom")
+        #expect(s.venter.allSatisfy { !$0.tittel.contains("@") && !$0.tittel.contains("://") })
         #expect(s.neste.map(\.tid) == ["I dag", "I dag 17:42"], "heldagen har ingen klokkeslett")
         #expect(s.neste[1].tittel.count > 90)
     }
@@ -138,6 +195,8 @@ import Testing
         )
         let fraDemo = DemoKilde(variant: .ekte, kalender: k).skjerm(nå: nå)
         #expect(fraDemo == fraFixtur, "fixturen og --demo-ekte må ikke drive fra hverandre")
+        // `Rad` bærer ikke `lenke`, så sammenlign også selve svaret feltene for felt (inkl. lenke og ts).
+        #expect(DemoKilde.ekteFormData(nå: nå, kalender: k).0 == (try naa("naa-ekte-form.json")))
     }
 
     @Test func ekteFormInneholderBareSyntetiskeData() throws {

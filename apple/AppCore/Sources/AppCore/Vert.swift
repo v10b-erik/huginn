@@ -1,10 +1,11 @@
 import Foundation
 
 /// Vertsnavnet slik foten viser det («live · ygg-v1»). Foten er én linje, og et tailnett-navn
-/// (`ygg-v1.tail908368.ts.net`) er mest støy: bare første ledd sier hvilken maskin det er.
+/// (`ygg-v1.tailEXAMPLE.ts.net`) er mest støy: bare første ledd sier hvilken maskin det er.
 ///
-/// - Et DNS-navn med flere ledd viser bare første ledd (`ygg-v1.tail908368.ts.net` → `ygg-v1`). Et avsluttende
-///   punktum (fullt kvalifisert navn) regnes ikke som ledd. En port følger med (`ygg-v1:3449`).
+/// - Et DNS-navn med flere ledd viser bare første ledd (`ygg-v1.tailEXAMPLE.ts.net` → `ygg-v1`). Et avsluttende
+///   punktum (fullt kvalifisert navn) regnes ikke som ledd. Får funksjonen en port, følger den med (`ygg-v1:3449`);
+///   `KildeValg` gir bare `url.host`, så foten viser i praksis aldri port.
 /// - IPv4, IPv6, enkeltledds-verter (`localhost`) og alt annet som ikke er et vanlig DNS-navn vises uendret.
 /// - Tom eller ugyldig inndata (blanke, mellomrom, `/`, `?`, `#`, `@`, kontrolltegn) gir `?`. Det betyr at en hel
 ///   URL, en sti eller `bruker:token@vert` aldri kan havne i foten: vi viser ingenting heller enn noe vi ikke forstår.

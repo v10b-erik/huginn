@@ -238,26 +238,51 @@ public struct NaaSkjerm: Sendable, Equatable {
         return String(decoding: Array(trimmet.utf16.prefix(200)), as: UTF16.self)
     }
 
-    /// Det menneskelige målet slik raden viser det: første linje med innhold, all whitespace (mellomrom, tabulator,
-    /// linjeskift, nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold.
-    /// Ingen kutting her: viewet kutter i halen (`lineLimit`), så ingenting går tapt i modellen.
+    /// Tegn som ikke tegnes (nullbredde mellomrom/-sammenføyere, word joiner, BOM). `isWhitespace` fanger dem ikke,
+    /// så uten dette ble en tekst av bare slike tegn en «tittel» som ser tom ut.
+    private static let usynlige: Set<Unicode.Scalar> = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{2060}", "\u{FEFF}"]
+
+    /// Første linje med innhold, slik raden viser den: usynlige tegn fjernet, all whitespace (mellomrom, tabulator,
+    /// nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold.
+    /// ALLE linjer etter den første med innhold forkastes (også for VoiceOver); kort format er poenget, og serverens
+    /// `tekst` er `goal = firstLine(describe)` uansett. Ingen kutting av lengden: viewet kutter i halen (`lineLimit`).
     static func maal(_ tekst: String) -> String {
-        for linje in tekst.unicodeScalars.split(whereSeparator: { CharacterSet.newlines.contains($0) }) {
+        let synlig = String(String.UnicodeScalarView(tekst.unicodeScalars.filter { !usynlige.contains($0) }))
+        for linje in synlig.unicodeScalars.split(whereSeparator: { CharacterSet.newlines.contains($0) }) {
             let ord = String(String.UnicodeScalarView(linje)).split(whereSeparator: \.isWhitespace)
             if !ord.isEmpty { return ord.joined(separator: " ") }
         }
         return ""
     }
 
-    /// «Venter på deg»-rad: tittelen er det menneskelige målet (`tekst`), håndtaket (`navn`, missionens maskinnavn)
-    /// er en liten mono-linje under, så man fortsatt ser hvilken mission det er. Er målet tomt eller bare blanke,
-    /// blir håndtaket tittel, og det vises ikke en gang til. Står håndtaket og målet likt, vises det heller ikke to ganger.
+    /// Tittelen uten teknisk støy (identitet regel 5: teknisk innhold hører hjemme i mono, ikke i tittelen).
+    /// Fjerner `<token>`-grupper (hakeparentes uten mellomrom inni, f.eks. en adresse) og ord som er URL- eller
+    /// e-postlignende (inneholder `://` eller `@`), og rydder tomme parenteser og hengende skilletegn etter det.
+    /// Blir det ikke igjen minst tre bokstaver/sifre menneskelig innhold, beholdes `mål` uendret
+    /// («Se https://…» → hele, ren `<a@example.com>` → hele). Resultatet er aldri tomt når `mål` ikke er det.
+    static func menneskelig(_ mål: String) -> String {
+        guard !mål.isEmpty else { return mål }
+        var t = mål.replacingOccurrences(of: "<[^<>\\s]*>", with: " ", options: .regularExpression)
+        t = t.split(whereSeparator: \.isWhitespace)
+            .filter { !$0.contains("://") && !$0.contains("@") }
+            .joined(separator: " ")
+        t = t.replacingOccurrences(of: "[(\\[]\\s*[)\\]]", with: "", options: .regularExpression)
+        t = t.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        t = t.trimmingCharacters(in: CharacterSet(charactersIn: " :,;-–—"))
+        let innhold = t.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+        return innhold >= 3 ? t : mål
+    }
+
+    /// «Venter på deg»-rad: tittelen er det menneskelige målet (`tekst`, uten teknisk støy), håndtaket (`navn`,
+    /// missionens maskinnavn) er en liten mono-linje under, så man fortsatt ser hvilken mission det er. Er målet tomt
+    /// eller bare blanke, blir håndtaket tittel, og det vises ikke en gang til. Står håndtaket og tittelen likt
+    /// (uavhengig av store/små bokstaver), vises det heller ikke to ganger.
     /// VoiceOver: «<mål>, venter», aldri håndtaket først.
     static func venterRad(id: String, navn: String, tekst: String) -> Rad {
-        let mål = maal(tekst)
+        let mål = menneskelig(maal(tekst))
         let håndtak = maal(navn)
         let tittel = !mål.isEmpty ? mål : (!håndtak.isEmpty ? håndtak : "Uten navn")
-        let under: String? = (håndtak.isEmpty || håndtak == tittel) ? nil : håndtak
+        let under: String? = (håndtak.isEmpty || håndtak.caseInsensitiveCompare(tittel) == .orderedSame) ? nil : håndtak
         return Rad(
             id: id, tittel: tittel, undertekst: under, ord: "VENTER", tid: nil, tone: .aksent,
             undertekstLinjer: 1, tale: "\(tittel), venter"

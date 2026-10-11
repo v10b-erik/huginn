@@ -47,10 +47,10 @@ public struct DemoKilde: NaaKilde {
             avvik: [
                 NaaAvvik(art: "venter", navn: "post-faktura-eksempel-7",
                          tekst: "Faktura-varsel fra leverandør <varsler+acct_EXAMPLE12345678abcdef@example.com> trenger svar",
-                         ts: nå.addingTimeInterval(-(18 * min)), lenke: nil),
+                         ts: nå.addingTimeInterval(-(18 * min)), lenke: "shadow#/m/post-faktura-eksempel-7"),
                 NaaAvvik(art: "venter", navn: "repo-utdatert-pr-eksempel-12",
                          tekst: "Avklar utdatert pull request \(lang)",
-                         ts: nå.addingTimeInterval(-(95 * min)), lenke: nil),
+                         ts: nå.addingTimeInterval(-(95 * min)), lenke: "shadow#/m/repo-utdatert-pr-eksempel-12"),
             ],
             kalender: [
                 NaaKalenderHendelse(tittel: "Eksempeldag, ingen møter", kalender: nil,

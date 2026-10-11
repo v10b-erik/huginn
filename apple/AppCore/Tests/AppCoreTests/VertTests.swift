@@ -4,7 +4,7 @@ import Testing
 
 @Suite struct VertTests {
     @Test(arguments: [
-        ("ygg-v1.tail908368.ts.net", "ygg-v1"),
+        ("ygg-v1.tailEXAMPLE.ts.net", "ygg-v1"),
         ("YGG-V1.Tail908368.ts.net", "YGG-V1"),
         ("ygg-v1.example", "ygg-v1"),
         ("ygg-v1.example.", "ygg-v1"),
@@ -14,7 +14,7 @@ import Testing
         #expect(vertVisning(inn) == ut)
     }
 
-    @Test(arguments: ["127.0.0.1", "100.64.130.46", "192.168.1.10", "0.0.0.0", "999.1.1.1"])
+    @Test(arguments: ["127.0.0.1", "100.64.0.1", "192.168.1.10", "0.0.0.0", "999.1.1.1"])
     func ipv4VisesUendret(ip: String) {
         #expect(vertVisning(ip) == ip)
     }
@@ -30,7 +30,7 @@ import Testing
     }
 
     @Test func vertMedPortBeholderPorten() {
-        #expect(vertVisning("ygg-v1.tail908368.ts.net:3449") == "ygg-v1:3449")
+        #expect(vertVisning("ygg-v1.tailEXAMPLE.ts.net:3449") == "ygg-v1:3449")
         #expect(vertVisning("localhost:3030") == "localhost:3030")
         #expect(vertVisning("127.0.0.1:3030") == "127.0.0.1:3030")
         #expect(vertVisning("ygg-v1.example:") == "ygg-v1.example:", "kolon uten port er ikke et vanlig navn")
@@ -61,7 +61,7 @@ import Testing
     }
 
     @Test func kildeNavnBrukerVisningenOgLekkerIkkeToken() throws {
-        let v = KildeValg.live(url: try #require(URL(string: "https://ygg-v1.tail908368.ts.net:3449/api")), token: "tok-hemmelig-123")
+        let v = KildeValg.live(url: try #require(URL(string: "https://ygg-v1.tailEXAMPLE.ts.net:3449/api")), token: "tok-hemmelig-123")
         #expect(v.navn == "live · ygg-v1")
         #expect(!v.navn.contains("hemmelig") && !v.navn.contains("/") && !v.navn.contains("3449"))
         let ip = KildeValg.live(url: try #require(URL(string: "http://127.0.0.1:3030")), token: "t")

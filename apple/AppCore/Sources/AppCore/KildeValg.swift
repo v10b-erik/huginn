@@ -10,6 +10,9 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     public static let demo = "--demo"
     public static let rolig = "--demo-rolig"
     public static let ekte = "--demo-ekte"
+    /// `--demo-vert=<host>` (synsløkka, bare DEBUG): demoens kilde-linje vises som `live · <første ledd av host>`,
+    /// så foten kan fotograferes i formen som brakk (`live · ygg-v1`) uten ekte tilkobling.
+    public static let demoVertPrefiks = "--demo-vert="
     public static let miljoURL = "HUGINN_URL"
     public static let miljoToken = "HUGINN_TOKEN"
 
@@ -32,9 +35,26 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     /// Kort navn til foten. Aldri tokenet.
     public var navn: String {
         switch self {
-        case .demo(let rolig, let ekte): ekte ? "demo · ekte" : (rolig ? "demo · rolig" : "demo")
+        case .demo(let rolig, let ekte): ekte ? "demo · ekte form" : (rolig ? "demo · rolig" : "demo")
         case .live(let url, _): "live · \(vertVisning(url.host))"
         }
+    }
+
+    /// Verten fra `--demo-vert=`, eller `nil` (ikke gitt, tom, eller `tillatLive == false`, som i release).
+    public static func demoVert(argumenter: [String], tillatLive: Bool) -> String? {
+        guard tillatLive,
+              let a = argumenter.first(where: { $0.hasPrefix(demoVertPrefiks) }) else { return nil }
+        let v = String(a.dropFirst(demoVertPrefiks.count))
+        return v.isEmpty ? nil : v
+    }
+
+    /// Kilde-linja i foten: full og smal form. For en demo med `demoVert` ser den ut som en live-kilde.
+    public func fot(demoVert: String?) -> (full: String, smal: String) {
+        if erDemo, let demoVert {
+            let vert = vertVisning(demoVert)
+            return ("live · \(vert)", vert)
+        }
+        return (navn, smaltNavn)
     }
 
     /// Foten når «live · ygg-v1» ikke får plass: bare det som skiller (verten). Demo har ingenting å korte inn.
