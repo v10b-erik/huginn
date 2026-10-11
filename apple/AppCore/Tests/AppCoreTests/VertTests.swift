@@ -68,5 +68,7 @@ import Testing
         #expect(ip.navn == "live · 127.0.0.1")
         let ip6 = KildeValg.live(url: try #require(URL(string: "http://[::1]:3030")), token: "t")
         #expect(ip6.navn == "live · ::1")
+        #expect(v.smaltNavn == "ygg-v1", "uten «live · » når foten er trang")
+        #expect(KildeValg.demo(rolig: true).smaltNavn == "demo · rolig")
     }
 }

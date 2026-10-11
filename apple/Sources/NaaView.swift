@@ -5,6 +5,7 @@ import AppCore
 struct NaaView: View {
     @State private var modell: NaaModell
     private let kildeNavn: String
+    private let smaltKildeNavn: String
     private let onSvar: ((NaaSkjerm.Handling) -> Void)?
     private let onTilkobling: () -> Void
     private let onKobleTilPaaNytt: (() -> Void)?
@@ -17,12 +18,13 @@ struct NaaView: View {
     ///   - onTilkobling: statusbrikken åpner arket med vert, «Koble fra» og «Bytt til demo».
     ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
     init(
-        kilde: any NaaKilde, kildeNavn: String, onSvar: ((NaaSkjerm.Handling) -> Void)?,
+        kilde: any NaaKilde, kildeNavn: String, smaltKildeNavn: String? = nil, onSvar: ((NaaSkjerm.Handling) -> Void)?,
         onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil,
         onKontakt: @escaping (Kontakt) -> Void = { _ in }
     ) {
         _modell = State(initialValue: NaaModell(kilde: kilde))
         self.kildeNavn = kildeNavn
+        self.smaltKildeNavn = smaltKildeNavn ?? kildeNavn
         self.onSvar = onSvar
         self.onTilkobling = onTilkobling
         self.onKobleTilPaaNytt = onKobleTilPaaNytt
@@ -169,17 +171,30 @@ struct NaaView: View {
         .accessibilityIdentifier("naaFeil")
     }
 
+    private func kildeTekst(_ tekst: String, _ p: Theme.Palette) -> some View {
+        Text(tekst).skrift(.fot).foregroundStyle(Color(p.dempet)).lineLimit(1).truncationMode(.middle)
+    }
+
     /// Tab-bar og fot ligger fast nederst; innholdet blekner under dem.
     private func bunn(_ p: Theme.Palette) -> some View {
         VStack(spacing: Theme.Avstand.s3) {
             Tabbar()
-            HStack {
+            HStack(spacing: Theme.Avstand.s3) {
                 // «bygg <sha> <klokkeslett>»: hvilken kode som kjører (regel 9). Tiden er byggetidspunktet, ikke nå.
+                // Versjonen har prioritet og kuttes aldri; kilde-linja til høyre kuttes i midten i stedet.
                 Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false).layoutPriority(1)
                     .accessibilityIdentifier("versionLabel")
-                Spacer()
-                Text(kildeNavn).skrift(.fot).foregroundStyle(Color(p.dempet))
-                    .accessibilityIdentifier("naaKilde")
+                Spacer(minLength: 0)
+                // Full kilde-linje når det er plass, ellers bare verten, og til slutt kuttet i midten. Aldri to linjer.
+                ViewThatFits(in: .horizontal) {
+                    kildeTekst(kildeNavn, p).fixedSize(horizontal: true, vertical: false)
+                    kildeTekst(smaltKildeNavn, p).fixedSize(horizontal: true, vertical: false)
+                    kildeTekst(smaltKildeNavn, p)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(kildeNavn)
+                .accessibilityIdentifier("naaKilde")
             }
             .padding(.horizontal, Theme.Avstand.s1)
         }

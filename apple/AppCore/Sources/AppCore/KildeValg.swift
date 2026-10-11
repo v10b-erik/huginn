@@ -37,6 +37,14 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
         }
     }
 
+    /// Foten når «live · ygg-v1» ikke får plass: bare det som skiller (verten). Demo har ingenting å korte inn.
+    public var smaltNavn: String {
+        switch self {
+        case .demo: navn
+        case .live(let url, _): vertVisning(url.host)
+        }
+    }
+
     /// Redigert: tokenet skal aldri havne i en logg.
     public var description: String { navn }
     public var debugDescription: String { navn }

@@ -53,23 +53,26 @@ private struct RadView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(rad.tittel).skrift(.tekst)
                     .foregroundStyle(Color(p.tekst))
-                    .lineLimit(2)
+                    .lineLimit(2).truncationMode(.tail)
                 if let u = rad.undertekst {
-                    Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet)).lineLimit(2)
+                    // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`), kuttet i halen; ellers to.
+                    Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                        .lineLimit(rad.undertekstLinjer).truncationMode(.tail)
                 }
             }
             Spacer(minLength: Theme.Avstand.s2)
             if let ord = rad.ord {
+                // Tilstandsordet (regel 4) krymper aldri; det er teksten til venstre som kuttes.
                 Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
+                    .lineLimit(1).fixedSize().layoutPriority(1)
             }
             if let tid = rad.tid {
                 Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
+                    .lineLimit(1).fixedSize().layoutPriority(1)
             }
         }
         .padding(.vertical, Theme.Avstand.s3)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            [rad.tittel, rad.undertekst, rad.ord?.lowercased(), rad.tid].compactMap { $0 }.joined(separator: ", ")
-        )
+        .accessibilityLabel(rad.talesTekst)
     }
 }

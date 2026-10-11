@@ -104,7 +104,7 @@ struct RotView: View {
 
     private func naa(valg: KildeValg, onSvar: ((NaaSkjerm.Handling) -> Void)?, nyttToken: (() -> Void)?) -> some View {
         NaaView(
-            kilde: valg.lagKilde(), kildeNavn: valg.navn, onSvar: onSvar,
+            kilde: valg.lagKilde(), kildeNavn: valg.navn, smaltKildeNavn: valg.smaltNavn, onSvar: onSvar,
             onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
             onKontakt: { kontakt = $0 }
         )
