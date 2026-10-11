@@ -238,39 +238,52 @@ public struct NaaSkjerm: Sendable, Equatable {
         return String(decoding: Array(trimmet.utf16.prefix(200)), as: UTF16.self)
     }
 
-    /// Tegn som ikke tegnes (nullbredde mellomrom/-sammenføyere, word joiner, BOM). `isWhitespace` fanger dem ikke,
-    /// så uten dette ble en tekst av bare slike tegn en «tittel» som ser tom ut.
-    private static let usynlige: Set<Unicode.Scalar> = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{2060}", "\u{FEFF}"]
+    /// Tegn som ikke tegnes og aldri bærer mening: nullbredde mellomrom, word joiner og BOM. `isWhitespace` fanger dem ikke,
+    /// så uten dette ble en tekst av bare slike tegn en «tittel» som ser tom ut. Fjernes fra teksten.
+    private static let usynlige: Set<Unicode.Scalar> = ["\u{200B}", "\u{2060}", "\u{FEFF}"]
+    /// ZWJ og ZWNJ binder emoji-sekvenser (👨‍👩‍👧, 🏳️‍🌈) og er meningsbærende i bl.a. persisk og indiske skrifter:
+    /// de beholdes i teksten. De teller bare ikke som innhold i «er ordet blankt?».
+    private static let bindetegn: Set<Unicode.Scalar> = ["\u{200C}", "\u{200D}"]
 
-    /// Første linje med innhold, slik raden viser den: usynlige tegn fjernet, all whitespace (mellomrom, tabulator,
-    /// nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold.
+    /// Første linje med innhold, slik raden viser den: U+200B/U+2060/U+FEFF fjernet, all whitespace (mellomrom, tabulator,
+    /// nbsp) slått sammen til ett mellomrom, trimmet. Tom streng når det ikke er noe innhold (ord av bare ZWJ/ZWNJ er blanke).
     /// ALLE linjer etter den første med innhold forkastes (også for VoiceOver); kort format er poenget, og serverens
     /// `tekst` er `goal = firstLine(describe)` uansett. Ingen kutting av lengden: viewet kutter i halen (`lineLimit`).
     static func maal(_ tekst: String) -> String {
         let synlig = String(String.UnicodeScalarView(tekst.unicodeScalars.filter { !usynlige.contains($0) }))
         for linje in synlig.unicodeScalars.split(whereSeparator: { CharacterSet.newlines.contains($0) }) {
             let ord = String(String.UnicodeScalarView(linje)).split(whereSeparator: \.isWhitespace)
+                .filter { $0.unicodeScalars.contains { !bindetegn.contains($0) } }
             if !ord.isEmpty { return ord.joined(separator: " ") }
         }
         return ""
     }
 
+    /// E-postadresse: `lokaldel@domene.tld`, minst ett punktum etter `@`, ingen mellomrom (ordet er allerede uten).
+    private static let epostMønster = try! NSRegularExpression(pattern: "^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$")
+
+    /// Ordet er teknisk støy bare hvis det er en e-postadresse eller en URL (`://`), også pakket inn i `<…>` eller
+    /// parentes, med tegnsetting hengende på. `@alle`, `@`, `f()`, `-5` og `<main>` er IKKE støy.
+    private static func erTekniskOrd(_ ord: Substring) -> Bool {
+        let kjerne = ord.trimmingCharacters(in: CharacterSet(charactersIn: "<(\"'")).trimmingCharacters(
+            in: CharacterSet(charactersIn: ">)\"'.,;:!?")
+        )
+        if kjerne.contains("://") { return true }
+        return epostMønster.firstMatch(in: kjerne, range: NSRange(kjerne.startIndex..., in: kjerne)) != nil
+    }
+
     /// Tittelen uten teknisk støy (identitet regel 5: teknisk innhold hører hjemme i mono, ikke i tittelen).
-    /// Fjerner `<token>`-grupper (hakeparentes uten mellomrom inni, f.eks. en adresse) og ord som er URL- eller
-    /// e-postlignende (inneholder `://` eller `@`), og rydder tomme parenteser og hengende skilletegn etter det.
-    /// Blir det ikke igjen minst tre bokstaver/sifre menneskelig innhold, beholdes `mål` uendret
-    /// («Se https://…» → hele, ren `<a@example.com>` → hele). Resultatet er aldri tomt når `mål` ikke er det.
+    /// Fjerner BARE hele ord (mellomromsavgrenset) som er en e-postadresse eller inneholder `://`, løse eller inni `<…>`.
+    /// Alt annet består tegn for tegn, også `<main>`, `@alle`, `f()` og `-5`: ingen trimming av tegn, bare whitespace-
+    /// normalisering. Fjernes ingenting, returneres `mål` uendret. Blir det ikke igjen minst tre bokstaver/sifre
+    /// menneskelig innhold, beholdes `mål` («Se https://…» → hele, ren `<a@example.com>` → hele): aldri tom.
     static func menneskelig(_ mål: String) -> String {
-        guard !mål.isEmpty else { return mål }
-        var t = mål.replacingOccurrences(of: "<[^<>\\s]*>", with: " ", options: .regularExpression)
-        t = t.split(whereSeparator: \.isWhitespace)
-            .filter { !$0.contains("://") && !$0.contains("@") }
-            .joined(separator: " ")
-        t = t.replacingOccurrences(of: "[(\\[]\\s*[)\\]]", with: "", options: .regularExpression)
-        t = t.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        t = t.trimmingCharacters(in: CharacterSet(charactersIn: " :,;-–—"))
-        let innhold = t.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
-        return innhold >= 3 ? t : mål
+        let ord = mål.split(whereSeparator: \.isWhitespace)
+        let igjen = ord.filter { !erTekniskOrd($0) }
+        guard igjen.count != ord.count else { return mål }
+        let ren = igjen.joined(separator: " ")
+        let innhold = ren.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+        return innhold >= 3 ? ren : mål
     }
 
     /// «Venter på deg»-rad: tittelen er det menneskelige målet (`tekst`, uten teknisk støy), håndtaket (`navn`,

@@ -122,9 +122,34 @@ import Testing
         ("Ingen støy her", "Ingen støy her"),
         ("Er 5 < 7 og 9 > 3", "Er 5 < 7 og 9 > 3"),
         ("Se <Viktig sak> nå", "Se <Viktig sak> nå"),
+        ("Se <post@example.com> og https://git.example.com/x nå", "Se og nå"),
+        ("Mail (post@example.com), takk", "Mail takk"),
     ])
     func teknisktInnholdFjernesFraTittelen(inn: String, ut: String) {
         #expect(venterRad(navn: "m", tekst: inn).tittel == ut)
+    }
+
+    /// Forrige regel (alle `<…>` uten mellomrom og alle ord med `@`) var for bred og ødela meningsbærende tekst.
+    /// Bare e-postadresser og `://`-tokens er støy; alt annet består tegn for tegn.
+    @Test(arguments: [
+        "Svar på <b> og c",
+        "Bytt <main> til <dev>",
+        "Si fra til @alle i dag",
+        "kl. 17 @ kontoret",
+        "-5 grader i kjølerommet",
+        "Kall f() i dag",
+        "Sett (x) til [y] nå",
+        "Skriv @ og @@ og a@b i dag",
+        "Hent fra host:8080 i dag",
+        "Pris er 5 < 7 > 3 kr",
+    ])
+    func meningsbærendeTegnOgOrdBlirStående(inn: String) {
+        let r = venterRad(navn: "m", tekst: inn)
+        #expect(r.tittel == inn, "ingenting skal fjernes: \(inn)")
+    }
+
+    @Test func utenFjerningReturneresMålUendretEtterWhitespacenormalisering() {
+        #expect(venterRad(navn: "m", tekst: "  Bytt   <main>\tog  @alle  ").tittel == "Bytt <main> og @alle")
     }
 
     @Test(arguments: [
@@ -150,11 +175,23 @@ import Testing
 
     // MARK: - usynlige tegn og store/små bokstaver
 
-    @Test(arguments: ["\u{200B}", "\u{2060}", "\u{FEFF}", "\u{200B}\u{FEFF} \u{2060}\n\u{200C}", " \u{200D} "])
+    @Test(arguments: ["\u{200B}", "\u{2060}", "\u{FEFF}", "\u{200B}\u{FEFF} \u{2060}\n\u{200C}", " \u{200D} ", "\u{200B}\u{2060}\u{FEFF}"])
     func bareUsynligeTegnFallerTilHåndtaket(tekst: String) {
         let r = venterRad(navn: "ko-xyz", tekst: tekst)
         #expect(r.tittel == "ko-xyz")
         #expect(r.undertekst == nil)
+    }
+
+    @Test(arguments: ["Bursdag 👨\u{200D}👩\u{200D}👧", "🏳\u{FE0F}\u{200D}🌈 feiring", "می\u{200C}خواهم کتاب"])
+    func zwjOgZwnjIEmojiOgSkriftBeholdes(tekst: String) {
+        let r = venterRad(navn: "m", tekst: tekst)
+        #expect(r.tittel == tekst, "ZWJ/ZWNJ er meningsbærende og skal ikke fjernes")
+        #expect(r.tittel.unicodeScalars.contains { $0 == "\u{200D}" || $0 == "\u{200C}" })
+    }
+
+    @Test func ordAvBareZwjOgZwnjErBlanktMenBeholdesIkkeSomTittel() {
+        #expect(venterRad(navn: "ko-xyz", tekst: "\u{200D}\u{200C} \u{200D}").tittel == "ko-xyz")
+        #expect(venterRad(navn: "m", tekst: "\u{200D}\nFørste synlige").tittel == "Første synlige")
     }
 
     @Test func usynligeTegnIMålFjernesOgFørsteSynligeLinjeBrukes() {
@@ -176,23 +213,35 @@ import Testing
 
     // MARK: - ekte form (syntetisk): lange mål, lang kalendertittel, heldag, ingen kort
 
-    @Test func ekteFormFixturenGirToVenterRaderMedRentMålSomTittel() throws {
+    @Test func ekteFormFixturenGirTreVenterRaderTekniskStøyBareUtenforDenUknekkeligeTokenen() throws {
         let s = NaaSkjerm(naa: try naa("naa-ekte-form.json"), traader: [], nå: isoDato("2026-10-11T15:52:00Z"), kalender: k)
         #expect(s.godkjenninger.isEmpty)
-        #expect(s.tilstand == .krever(2))
-        #expect(s.venter.map(\.tittel) == ["Faktura-varsel fra leverandør trenger svar", "Avklar utdatert pull request"],
-                "adresse og URL er tatt ut av tittelen")
-        #expect(s.venter.map(\.undertekst) == ["post-faktura-eksempel-7", "repo-utdatert-pr-eksempel-12"])
-        #expect(s.venter.allSatisfy { !$0.tittel.contains("@") && !$0.tittel.contains("://") })
+        #expect(s.tilstand == .krever(3))
+        #expect(s.venter.count == 3)
+        #expect(s.venter[0].tittel == "Faktura-varsel fra leverandør trenger svar", "adressen er tatt ut")
+        #expect(s.venter[1].tittel == "Avklar utdatert pull request", "URL-en er tatt ut")
+        // Tredje rad: et langt token som verken er e-post eller URL blir stående, så layouten stresstestes.
+        let token = try #require(s.venter[2].tittel.split(separator: " ").last)
+        #expect(token.hasPrefix("EKSEMPEL_REF_") && token.count >= 100 && !token.contains("@") && !token.contains("://"))
+        #expect(s.venter.map(\.undertekst) == ["post-faktura-eksempel-7", "repo-utdatert-pr-eksempel-12", "docs-ref-eksempel-3"])
         #expect(s.neste.map(\.tid) == ["I dag", "I dag 17:42"], "heldagen har ingen klokkeslett")
         #expect(s.neste[1].tittel.count > 90)
     }
 
+    @Test func ekteFormTraaderGirEnPågårMedTidOgEnInaktivRad() throws {
+        let nå = isoDato("2026-10-11T15:52:00Z")
+        let traader = try TraadflataKlient.dekoder().decode([Traad].self, from: Fixtur.data("traader-ekte-form.json"))
+        #expect(traader == DemoKilde.ekteFormTraader(nå: nå), "fixturen og demoens tråder må ikke drive fra hverandre")
+        let s = NaaSkjerm(naa: try naa("naa-ekte-form.json"), traader: traader, nå: nå, kalender: k)
+        #expect(s.traader.map(\.tittel) == ["kode:eksempel-app", "eksempel-agent"])
+        #expect(s.traader.map(\.ord) == ["PÅGÅR", nil], "pågående rad har tilstandsordet, inaktiv bare tiden")
+        #expect(s.traader.map(\.tid) == ["6 min", "47 min"], "begge har tid: raden med ord OG tid er dekket")
+    }
+
     @Test func ekteFormFixturenOgDemoGirSammeSkjerm() throws {
         let nå = isoDato("2026-10-11T15:52:00Z")
-        let fraFixtur = NaaSkjerm(
-            naa: try naa("naa-ekte-form.json"), traader: DemoKilde.ekteFormTraader(nå: nå), nå: nå, kalender: k
-        )
+        let traader = try TraadflataKlient.dekoder().decode([Traad].self, from: Fixtur.data("traader-ekte-form.json"))
+        let fraFixtur = NaaSkjerm(naa: try naa("naa-ekte-form.json"), traader: traader, nå: nå, kalender: k)
         let fraDemo = DemoKilde(variant: .ekte, kalender: k).skjerm(nå: nå)
         #expect(fraDemo == fraFixtur, "fixturen og --demo-ekte må ikke drive fra hverandre")
         // `Rad` bærer ikke `lenke`, så sammenlign også selve svaret feltene for felt (inkl. lenke og ts).

@@ -14,6 +14,13 @@
       "tekst": "Avklar utdatert pull request https://git.example.com/eksempel/app/pull/4?ref=EXAMPLE0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
       "ts": "2026-10-11T14:17:00.000Z",
       "lenke": "shadow#/m/repo-utdatert-pr-eksempel-12"
+    },
+    {
+      "art": "venter",
+      "navn": "docs-ref-eksempel-3",
+      "tekst": "Avklar EKSEMPEL_REF_a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5",
+      "ts": "2026-10-11T11:52:00.000Z",
+      "lenke": "shadow#/m/docs-ref-eksempel-3"
     }
   ],
   "kalender": [

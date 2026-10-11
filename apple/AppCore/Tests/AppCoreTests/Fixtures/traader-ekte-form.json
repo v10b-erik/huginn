@@ -1,0 +1,14 @@
+[
+  {
+    "id": "ekte-app",
+    "tittel": "kode:eksempel-app",
+    "sistAktiv": 1791733560000,
+    "holder": { "type": "plattform", "status": "working", "aktiv": true }
+  },
+  {
+    "id": "ekte-agent",
+    "tittel": "eksempel-agent",
+    "sistAktiv": 1791731100000,
+    "holder": { "type": "plattform", "status": "idle", "aktiv": true }
+  }
+]

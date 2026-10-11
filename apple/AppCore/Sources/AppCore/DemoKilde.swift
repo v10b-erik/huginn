@@ -51,6 +51,10 @@ public struct DemoKilde: NaaKilde {
                 NaaAvvik(art: "venter", navn: "repo-utdatert-pr-eksempel-12",
                          tekst: "Avklar utdatert pull request \(lang)",
                          ts: nå.addingTimeInterval(-(95 * min)), lenke: "shadow#/m/repo-utdatert-pr-eksempel-12"),
+                // Et langt, uknekkelig token som verken er e-post eller URL: blir stående i tittelen (layout-stresstest).
+                NaaAvvik(art: "venter", navn: "docs-ref-eksempel-3",
+                         tekst: "Avklar EKSEMPEL_REF_" + String(repeating: "a1b2c3d4e5", count: 9),
+                         ts: nå.addingTimeInterval(-(240 * min)), lenke: "shadow#/m/docs-ref-eksempel-3"),
             ],
             kalender: [
                 NaaKalenderHendelse(tittel: "Eksempeldag, ingen møter", kalender: nil,

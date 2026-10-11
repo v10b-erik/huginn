@@ -5,7 +5,7 @@ import Testing
 @Suite struct VertTests {
     @Test(arguments: [
         ("ygg-v1.tailEXAMPLE.ts.net", "ygg-v1"),
-        ("YGG-V1.Tail908368.ts.net", "YGG-V1"),
+        ("YGG-V1.TailEXAMPLE.ts.net", "YGG-V1"),
         ("ygg-v1.example", "ygg-v1"),
         ("ygg-v1.example.", "ygg-v1"),
         ("a.b.c.d.e", "a"),
