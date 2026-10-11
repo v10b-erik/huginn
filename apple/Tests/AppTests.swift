@@ -50,3 +50,22 @@ import AppCore
         #expect(modell.feil?.tittel == "Ikke innlogget")
     }
 }
+
+/// Regel 10: fanenes tekst er en tekstrolle fra paletten (dempet/aksent, begge ≥ 4,5:1 i `ThemeTests`) og har
+/// ingen egen opasitet. En fane som ikke finnes ennå kan ikke trykkes, men blekner ikke under kontrastkravet.
+@Suite struct TabbarTests {
+    @Test func ikkeValgteFanerBrukerDempetOgValgtBrukerAksentUtenOpasitet() {
+        for p in [Theme.mork, Theme.lys] {
+            #expect(Tabbar.tekstfarge(valgt: false, palett: p) == p.dempet)
+            #expect(Tabbar.tekstfarge(valgt: true, palett: p) == p.aksent)
+            #expect(Tabbar.tekstfarge(valgt: false, palett: p) != p.svak, "svak er ikke tekstfarge")
+        }
+        #expect(Tabbar.opasitet == 1)
+    }
+
+    @Test func barenHarFireFanerOgBareNåErValgtOgAktiv() {
+        #expect(Tabbar.faner.map(\.tittel) == ["Nå", "Tråder", "Kø", "Samtale"])
+        #expect(Tabbar.faner.filter(\.valgt).map(\.id) == ["naa"])
+        #expect(Tabbar.faner.filter(\.aktiv).map(\.id) == ["naa"])
+    }
+}

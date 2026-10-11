@@ -27,7 +27,12 @@ struct GlassFlate: ViewModifier {
             case .valgt: [Color(p.aksentTone), Color(p.krever2)]
             }
         content
-            .background(form.fill(LinearGradient(colors: fyll, startPoint: .top, endPoint: .bottom)))
+            // Skyggen hører til formen, ikke til innholdet: på containeren ville den ligget som en glorie
+            // under hver tekst og hvert LCD-punkt (regel 7: glass er overflate, ikke pynt).
+            .background(
+                form.fill(LinearGradient(colors: fyll, startPoint: .top, endPoint: .bottom))
+                    .shadow(color: Color(p.skygge), radius: 10, x: 0, y: 8)
+            )
             .overlay(form.strokeBorder(variant == .glass ? Color(p.kant) : Color(p.aksentKant), lineWidth: 1))
             .overlay(
                 // Lyskanten: en 1 pt strek rett innenfor kanten som bare lever øverst og fader ut nedover.
@@ -38,7 +43,6 @@ struct GlassFlate: ViewModifier {
                     }
                     .allowsHitTesting(false)
             )
-            .shadow(color: Color(p.skygge), radius: 10, x: 0, y: 8)
     }
 }
 

@@ -52,7 +52,7 @@ struct NaaView: View {
 
     private func topplinje(_ p: Theme.Palette) -> some View {
         HStack {
-            Text(modell.skjerm?.topplinje ?? Tid.topplinje(nå: Date(), kalender: .current))
+            Text(modell.skjerm?.topplinje ?? Tid.datolinje(nå: Date(), kalender: .current))
                 .skrift(.etikett).foregroundStyle(Color(p.tekst))
                 .accessibilityIdentifier("naaDato")
             Spacer()
@@ -125,7 +125,8 @@ struct NaaView: View {
         VStack(spacing: Theme.Avstand.s3) {
             Tabbar()
             HStack {
-                Text("huginn \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
+                // «bygg <sha> <klokkeslett>»: hvilken kode som kjører (regel 9). Tiden er byggetidspunktet, ikke nå.
+                Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
                     .accessibilityIdentifier("versionLabel")
                 Spacer()
                 Text(kildeNavn).skrift(.fot).foregroundStyle(Color(p.dempet))

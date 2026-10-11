@@ -29,13 +29,16 @@ struct HeroView: View {
                         .skrift(.hero)
                         .foregroundStyle(krever ? Color(p.tekst) : Color(p.dempet))
                         .fixedSize(horizontal: false, vertical: true)
+                    // Én linje i begge tilstander, så heroen er like høy og innholdet under ikke hopper.
                     Text(undertekst)
                         .skrift(.etikettAksent)
                         .foregroundStyle(krever ? Color(p.aksent) : Color(p.dempet))
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 Spacer(minLength: 0)
             }
+            .frame(minHeight: Double(Punktmatrise.rader) * Theme.Lcd.pitchHero)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(etikett)
@@ -55,7 +58,8 @@ struct HeroView: View {
     }
 
     private func lysFarge(_ p: Theme.Palette) -> Color {
-        krever ? Color(p.aksent) : Color(p.svak)
+        // `dempet`, ikke `svak`: svak er ikke tekstfarge, og tallet er signaturen (regel 10).
+        krever ? Color(p.aksent) : Color(p.dempet)
     }
 
     /// VoiceOver leser meningen, ikke prikkene.

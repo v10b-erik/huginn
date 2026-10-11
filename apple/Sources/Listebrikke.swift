@@ -61,7 +61,8 @@ private struct RadView: View {
             Spacer(minLength: Theme.Avstand.s2)
             if let ord = rad.ord {
                 Text(ord).skrift(.status).foregroundStyle(tekstfarge(rad.tone, p))
-            } else if let tid = rad.tid {
+            }
+            if let tid = rad.tid {
                 Text(tid).skrift(.tid).monospacedDigit().foregroundStyle(Color(p.dempet))
             }
         }

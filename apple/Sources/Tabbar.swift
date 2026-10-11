@@ -19,6 +19,13 @@ struct Tabbar: View {
         Fane(id: "samtale", tittel: "Samtale", aktiv: false, valgt: false, identifier: "tabSamtale"),
     ]
 
+    /// Fanenes tekst er alltid en TEKSTrolle fra paletten (identitet regel 10, ≥ 4,5:1): `aksent` når valgt,
+    /// ellers `dempet`. En fane som ikke finnes ennå kan ikke trykkes, men blekner ikke: ingen egen opasitet.
+    static func tekstfarge(valgt: Bool, palett p: Theme.Palette) -> Theme.RGBA {
+        valgt ? p.aksent : p.dempet
+    }
+    static let opasitet = 1.0
+
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -28,7 +35,7 @@ struct Tabbar: View {
                 Button {} label: {
                     Text(fane.tittel)
                         .skrift(.tab)
-                        .foregroundStyle(fane.valgt ? Color(p.aksent) : Color(p.tekst))
+                        .foregroundStyle(Color(Self.tekstfarge(valgt: fane.valgt, palett: p)))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity, minHeight: Theme.Maal.tab)
@@ -36,8 +43,10 @@ struct Tabbar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(!fane.aktiv)
-                .opacity(fane.aktiv ? 1 : 0.45)
+                // Ikke `.disabled`: SwiftUI blekner da etiketten under kontrastkravet. Inaktive faner har en
+                // handling som ikke gjør noe, og VoiceOver får beskjed.
+                .allowsHitTesting(fane.aktiv)
+                .opacity(Self.opasitet)
                 .accessibilityIdentifier(fane.identifier)
                 .accessibilityLabel(fane.tittel)
                 .accessibilityHint(fane.aktiv ? "" : "Kommer")

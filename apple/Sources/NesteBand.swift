@@ -4,12 +4,15 @@ import AppCore
 /// «NESTE»/«SÅ»: ett smalt glassbånd per kommende hendelse. Etiketten er dempet, ikke aksent (regel 1).
 struct NesteBand: View {
     var neste: NaaSkjerm.Neste
+    /// Fast bredde på etiketten, så «Trening» og «Standup» starter på samme x.
+    @ScaledMetric(relativeTo: .caption) private var etikettBredde = 52
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s3) {
             Text(neste.etikett).skrift(.etikett).foregroundStyle(Color(p.dempet))
+                .frame(width: etikettBredde, alignment: .leading)
             Text(neste.tittel).skrift(.tekst).foregroundStyle(Color(p.tekst)).lineLimit(1)
             Spacer(minLength: Theme.Avstand.s2)
             Text(neste.tid).skrift(.tid).foregroundStyle(Color(p.dempet)).lineLimit(1)

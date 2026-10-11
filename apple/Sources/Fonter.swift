@@ -15,18 +15,19 @@ enum Fonter {
         static let alle = [archivoBold, archivoMedium, martianRegular, martianSemiBold]
     }
 
-    nonisolated(unsafe) private static var registrert = false
+    /// Registreringen skjer nøyaktig én gang, trådsikkert (`static let` initialiseres lazily og atomisk).
+    private static let registrertForBundle: Bool = {
+        for url in Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [] {
+            // Feiler stille hvis den allerede er registrert (f.eks. app + testvert).
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+        return true
+    }()
 
     /// Idempotent. Returnerer navnene som IKKE lot seg bruke etterpå (tom = alt i orden).
     @discardableResult
-    static func registrer(bundle: Bundle = .main) -> [String] {
-        if !registrert {
-            registrert = true
-            for url in bundle.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [] {
-                // Feiler stille hvis den allerede er registrert (f.eks. app + testvert).
-                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-            }
-        }
+    static func registrer() -> [String] {
+        _ = registrertForBundle
         return Navn.alle.filter { !erLastet($0) }
     }
 

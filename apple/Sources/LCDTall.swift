@@ -11,6 +11,8 @@ struct LCDTall: View {
     var glod: Color? = nil
 
     private var antall: Int { tekst.count }
+    /// Luft rundt matrisen så gløden ikke klippes av rammen.
+    private let luft = 12.0
     private var bredde: Double { Double(Punktmatrise.bredde(antallTegn: antall)) * pitch }
     private var hoyde: Double { Double(Punktmatrise.rader) * pitch }
 
@@ -27,6 +29,7 @@ struct LCDTall: View {
                 }
             }
             var c = ctx
+            c.translateBy(x: luft, y: luft)
             for (i, ch) in tekst.enumerated() { prikk(ch, i, lysePrikker: false, &c, slukket) }
             c.drawLayer { lag in
                 if let glod { lag.addFilter(.shadow(color: glod, radius: 5, x: 0, y: 0)) }
@@ -34,7 +37,8 @@ struct LCDTall: View {
                 for (i, ch) in tekst.enumerated() { prikk(ch, i, lysePrikker: true, &l, lys) }
             }
         }
-        .frame(width: bredde, height: hoyde)
+        .frame(width: bredde + 2 * luft, height: hoyde + 2 * luft)
+        .padding(-luft)
         .accessibilityHidden(true)  // verdien leses av heroens etikett, ikke som prikker
     }
 }
