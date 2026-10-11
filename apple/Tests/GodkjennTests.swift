@@ -109,8 +109,22 @@ private struct Bestemt: Autentisering {
         let g = try #require(m.skjerm?.godkjenninger.first)
         m.velg(try #require(g.godkjenn))
         guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("ventet .bekrefter"); return }
-        #expect(f.valg.key == "send" && f.valg.label == "✉️ Send")
-        #expect(f.begrunnelse.hasPrefix("✉️ Send:"))
+        #expect(f.valg.key == "send" && f.valg.label == "Godkjenn «Send»")
+        #expect(f.begrunnelse.hasPrefix("Godkjenn «Send»:"))
+    }
+
+    /// E1: en utførende handling merket «Avslå» presenteres som «Godkjenn «Avslå»» og sender fortsatt `send`.
+    @Test func handlingMerketAvslåSerIkkeUtForÅVæreAvslag() async throws {
+        let demo = DemoAvgjort(handlinger: .merketAvslaa)
+        let m = modell(demo)
+        await m.last()
+        let g = try #require(m.skjerm?.godkjenninger.first)
+        let h = try #require(g.godkjenn)
+        #expect(h.label == "Godkjenn «Avslå»" && g.avslaa.label == "Avslå")
+        m.velg(h)
+        guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("ventet .bekrefter"); return }
+        #expect(f.valg.label == "Godkjenn «Avslå»" && f.valg.key == "send" && f.valg.krevAutentisering)
+        #expect(f.begrunnelse.hasPrefix("Godkjenn «Avslå»:"))
     }
 
     @Test func ukjentKortIdVelgesAldri() async throws {

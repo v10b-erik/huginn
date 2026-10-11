@@ -77,8 +77,6 @@ struct BekreftelseArk: View {
                 } else {
                     ramme(restFlate(rest))
                 }
-            } else if rull {
-                Spacer(minLength: 0)
             }
 
             konsekvensFlate(p)
@@ -111,7 +109,7 @@ struct BekreftelseArk: View {
             .padding(.top, Theme.Avstand.s1)
         }
         .padding(Theme.Avstand.s5)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: rull ? .infinity : nil, alignment: .topLeading)
     }
 
     private func restFlate(_ rest: String) -> some View {
@@ -136,7 +134,7 @@ struct BekreftelseArk: View {
         let form = RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous)
         return VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
             Text("Hva skjer").skrift(.etikett).foregroundStyle(Color(p.dempet))
-            Text(konsekvens).skrift(.tekst).foregroundStyle(Color(p.tekst))
+            Text(forespørsel.konsekvens).skrift(.tekst).foregroundStyle(Color(p.tekst))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Theme.Avstand.s4)
@@ -146,12 +144,6 @@ struct BekreftelseArk: View {
         .overlay(form.strokeBorder(Color(p.kant), lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("godkjenn.konsekvens")
-    }
-
-    private var konsekvens: String {
-        godkjenner
-            ? "«\(forespørsel.valg.label)» utføres nå. Krever Face ID eller enhetskode."
-            : "Forespørselen forkastes. Ingenting utføres."
     }
 }
 
@@ -207,3 +199,4 @@ struct SvarRad: View {
         }
     }
 }
+

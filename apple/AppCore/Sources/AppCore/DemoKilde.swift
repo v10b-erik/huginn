@@ -85,6 +85,7 @@ public struct DemoKilde: NaaKilde {
         switch h {
         case .standard: return [.init(key: "approve", label: "Godkjenn"), avslaa]
         case .en: return [.init(key: "send", label: "✉️ Send"), avslaa]
+        case .merketAvslaa: return [.init(key: "send", label: "Avslå"), avslaa]
         case .flere: return [.init(key: "send", label: "✉️ Send"), .init(key: "draft", label: "💾 Lagre utkast"), avslaa]
         }
     }

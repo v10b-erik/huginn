@@ -153,18 +153,22 @@ extension GodkjenningBrikke {
     }
 }
 
-/// «FLERE VALG · SVAR I TELEGRAM»: dempet tekst, ikke en knapp.
+/// «FLERE VALG · SVAR I TELEGRAM»: dempet tekst, ikke en knapp. Brytes etter midtprikken; «SVAR I TELEGRAM» har hardt
+/// mellomrom og kan aldri brytes midt i (den krympes heller).
 private struct FlereValg: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Text("Flere valg · svar i Telegram").skrift(.status)
-            .foregroundStyle(Color(Theme.palett(for: scheme).dempet))
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp, alignment: .leading)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Flere valg. Svar i Telegram.")
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Flere valg ·").lineLimit(1)
+            Text("Svar\u{00A0}i\u{00A0}Telegram").lineLimit(1)
+        }
+        .skrift(.status)
+        .minimumScaleFactor(0.6)
+        .foregroundStyle(Color(Theme.palett(for: scheme).dempet))
+        .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Flere valg. Svar i Telegram.")
     }
 }
 

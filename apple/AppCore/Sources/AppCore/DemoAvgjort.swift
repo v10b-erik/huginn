@@ -21,6 +21,8 @@ public final class DemoAvgjort: @unchecked Sendable {
     /// med flere handlinger ikke får noen Godkjenn-vei.
     public enum Handlinger: String, Sendable, Equatable {
         case standard, en, flere
+        /// Den utførende handlingen `send` merket «Avslå» (og en ekte deny): etiketten kan aldri stå alene som verbet.
+        case merketAvslaa
     }
 
     public let atferd: Atferd

@@ -205,13 +205,13 @@ struct NaaView: View {
     /// Hva knappene på et kort gjør nå: av mens noe annet pågår eller en usikkerhet ikke er kvittert; «Sender …» på kortet
     /// som sendes. Én forsendelse om gangen, for alle kortene.
     private func knapper(for g: NaaSkjerm.Godkjenning) -> GodkjenningBrikke.Knapper {
-        switch modell.svar?.tilstand {
-        case .sender(let f)? where f.forespørsel.kortId == g.id:
-            .sender(f.forespørsel.valg.erAvslag ? "Sender avslag …"
-                : (f.forespørsel.valg.key == "approve" ? "Sender godkjenning …" : "Sender «\(f.forespørsel.valg.label)» …"))
-        case .usikker(let f)? where f.kortId == g.id: .usikker(Svar.usikkerVisning(for: f))
-        case .sender?, .autentiserer?, .usikker?, .ferdig?: .av
-        default: .aktive
+        switch modell.svar?.svar.knapper(for: g.id) ?? .av {
+        case .aktive: .aktive
+        case .av: .av
+        case .sender(let f):
+            .sender(f.valg.erAvslag ? "Sender avslag …"
+                : (f.valg.key == "approve" ? "Sender godkjenning …" : "Sender «\(f.valg.etikett)» …"))
+        case .usikker(let f): .usikker(Svar.usikkerVisning(for: f))
         }
     }
 
@@ -241,7 +241,7 @@ struct NaaView: View {
             SvarRad(
                 innhold: .kvittering(
                     ord: "\(f.valg.erAvslag ? "Avslått" : "Godkjent") \(kl)",
-                    tekst: f.valg.key == "approve" || f.valg.erAvslag ? f.forsteLinje : "\(f.forsteLinje) · \(f.valg.label)"
+                    tekst: f.valg.key == "approve" || f.valg.erAvslag ? f.forsteLinje : "\(f.forsteLinje) · \(f.valg.etikett)"
                 ),
                 onOppdater: {}, onLukk: { modell.lukkSvar() }
             )
