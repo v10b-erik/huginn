@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve D — Industriell</title>
+<!--
+  PRØVE D — INDUSTRIDESIGN (Rams/Braun, Teenage Engineering): appen som et fysisk instrument
+  Tradisjon:    Moduler på en felles flate, hver med én oppgave, tydelig kant og én lysende LCD. Knapper ser
+                ut som knapper (kant under, ikke svevende skygge). Mørk LCD i lys kropp.
+  Typografi:    Familjen Grotesk (titler/etiketter, 500/700) + DM Mono (verdier, 400/500) +
+                DotGothic16 (punktmatrise-avlesningen, kun i LCD-modulen).
+  Palett:       Kjølig lysegrå kropp #DADDE0, modulflate #ECEEF0, LCD #1D2022. Oransje #FF5A1F er «krever deg»
+                (lyser i LCD og er knappen). Alt annet er grått. Grønn/rød bare som LED.
+  Spacing:      4 · 8 · 12 · 16 · 24 — og to radier som aldri blandes: modul 16, knapp 10 (LED = rund).
+  Signaturgrep: LCD-avlesningen øverst: «1 KREVER DEG» i punktmatrise. Under den er hele siden modulært
+                «utstyr» med LED-er for tilstand.
+  Hvorfor:      Briefen sier at du skal ville sitte der: en flate som føles som noe du holder i, med detaljer
+                (kanter, lamper, tydelige knapper) som belønner at du ser nøye etter.
+-->
+<style>
+@font-face{font-family:"Familjen Grotesk";font-weight:500;src:url(fonts/familjen-grotesk-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Familjen Grotesk";font-weight:700;src:url(fonts/familjen-grotesk-700-normal.woff2) format("woff2")}
+@font-face{font-family:"DM Mono";font-weight:400;src:url(fonts/dm-mono-400-normal.woff2) format("woff2")}
+@font-face{font-family:"DM Mono";font-weight:500;src:url(fonts/dm-mono-500-normal.woff2) format("woff2")}
+@font-face{font-family:"DotGothic16";font-weight:400;src:url(fonts/dotgothic16-400-normal.woff2) format("woff2")}
+
+:root{
+  --kropp:#DADDE0; --modul:#ECEEF0; --kant:#B9BDC2; --lcd:#1D2022;
+  --blekk:#1B1D1F; --dempet:#6B7075;
+  --oransje:#FF5A1F; --ok:#2FB171; --feil:#E5383B;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --r-modul:16px; --r-knapp:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#C7CACE}
+body{width:390px;min-height:844px;margin:0 auto;background:var(--kropp);color:var(--blekk);
+  font:500 14px/20px "Familjen Grotesk",sans-serif;-webkit-font-smoothing:antialiased;padding:var(--s4)}
+.mono{font-family:"DM Mono",monospace;font-weight:400;font-variant-numeric:tabular-nums}
+.lbl{font:700 11px/16px "Familjen Grotesk";letter-spacing:.1em;text-transform:uppercase;color:var(--dempet)}
+
+.topp{display:flex;justify-content:space-between;align-items:center;padding:0 var(--s1) var(--s3)}
+.topp .lbl:first-child{color:var(--blekk)}
+
+/* LCD */
+.lcd{background:var(--lcd);border-radius:var(--r-modul);padding:var(--s4) var(--s4) var(--s3);margin-bottom:var(--s3);
+  box-shadow:inset 0 0 0 2px #2B2F32}
+.lcd .rad1{display:flex;align-items:flex-end;gap:var(--s4)}
+.lcd .stor{display:block;flex:none}
+.lcd .stor .p{fill:var(--oransje)}
+.lcd .stor .u{fill:#2A2E31}
+.lcd .tekst{font:400 17px/20px "DotGothic16";color:var(--oransje);letter-spacing:.08em;text-transform:uppercase}
+.lcd .ned{margin-top:var(--s3);padding-top:var(--s3);border-top:1px dashed #3A3F43;display:flex;justify-content:space-between;
+  font:400 12px/16px "DotGothic16";color:#8C9399;letter-spacing:.06em;text-transform:uppercase}
+
+/* fliser 2x2 */
+.fliser{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-bottom:var(--s3)}
+.flis{background:var(--modul);border-radius:var(--r-modul);padding:var(--s3) var(--s4);border:1px solid var(--kant);position:relative}
+.flis .v{font:500 26px/32px "DM Mono";margin-top:2px}
+.flis .v small{font-size:13px;color:var(--dempet)}
+.led{position:absolute;right:14px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--kant)}
+.led.ok{background:var(--ok)}.led.feil{background:var(--feil)}.led.krever{background:var(--oransje)}.led.pågår{background:var(--blekk)}
+
+.modul{background:var(--modul);border-radius:var(--r-modul);padding:var(--s4);border:1px solid var(--kant);margin-bottom:var(--s3)}
+.modul>.lbl{margin-bottom:var(--s3);display:flex;justify-content:space-between}
+.modul.krever{border-color:var(--oransje);box-shadow:0 0 0 1px var(--oransje)}
+.modul.krever>.lbl{color:var(--oransje)}
+.modul h3{font:700 22px/26px "Familjen Grotesk";letter-spacing:-.01em;margin-bottom:var(--s1)}
+.modul p{font-size:13px;line-height:18px;color:var(--dempet)}
+.modul p b{color:var(--blekk);font-weight:500}
+.knapper{display:grid;grid-template-columns:3fr 2fr;gap:var(--s2);margin-top:var(--s4)}
+button{height:52px;border-radius:var(--r-knapp);font:700 14px/1 "Familjen Grotesk";letter-spacing:.04em;cursor:pointer;
+  border:1px solid var(--blekk);border-bottom-width:4px;background:var(--modul);color:var(--blekk)}
+button.ja{background:var(--oransje);border-color:#B83A0C;color:#1B0A02}
+button:active{border-bottom-width:1px;transform:translateY(3px)}
+button:focus-visible{outline:3px solid var(--blekk);outline-offset:2px}
+
+.l{display:grid;grid-template-columns:1fr auto;column-gap:var(--s3);align-items:center;padding:var(--s2) 0;border-top:1px solid #D2D5D9}
+.l:first-of-type{border-top:0;padding-top:0}
+.l .n{font-weight:500}
+.l .n small{display:block;font:400 11px/16px "DM Mono";color:var(--dempet)}
+.l .t{font:400 12px/16px "DM Mono";color:var(--dempet)}
+.l .t.krever{color:var(--oransje);font-weight:500}.l .t.feil{color:var(--feil);font-weight:500}
+.spor{grid-column:1/-1;display:flex;gap:3px;margin-top:var(--s2)}
+.spor i{flex:1;height:8px;border-radius:2px;background:#D2D5D9}
+.spor i.på{background:var(--dempet)}.spor i.nå{background:var(--blekk)}
+
+.fot{display:flex;justify-content:space-between;padding:var(--s2) var(--s1) 0}
+</style>
+</head>
+<body>
+
+<div class="topp"><span class="lbl">Basic</span><span class="lbl">søn 11.10 · 15:52</span></div>
+
+<section class="lcd" role="status">
+  <div class="rad1"><svg class="stor" viewBox="0 0 55 77" width="72" height="100" role="img" aria-label="1"><circle class="u" cx="5.2" cy="5.2" r="4.2"/><circle class="u" cx="16.2" cy="5.2" r="4.2"/><circle class="p" cx="27.2" cy="5.2" r="4.2"/><circle class="u" cx="38.2" cy="5.2" r="4.2"/><circle class="u" cx="49.2" cy="5.2" r="4.2"/><circle class="u" cx="5.2" cy="16.2" r="4.2"/><circle class="p" cx="16.2" cy="16.2" r="4.2"/><circle class="p" cx="27.2" cy="16.2" r="4.2"/><circle class="u" cx="38.2" cy="16.2" r="4.2"/><circle class="u" cx="49.2" cy="16.2" r="4.2"/><circle class="u" cx="5.2" cy="27.2" r="4.2"/><circle class="u" cx="16.2" cy="27.2" r="4.2"/><circle class="p" cx="27.2" cy="27.2" r="4.2"/><circle class="u" cx="38.2" cy="27.2" r="4.2"/><circle class="u" cx="49.2" cy="27.2" r="4.2"/><circle class="u" cx="5.2" cy="38.2" r="4.2"/><circle class="u" cx="16.2" cy="38.2" r="4.2"/><circle class="p" cx="27.2" cy="38.2" r="4.2"/><circle class="u" cx="38.2" cy="38.2" r="4.2"/><circle class="u" cx="49.2" cy="38.2" r="4.2"/><circle class="u" cx="5.2" cy="49.2" r="4.2"/><circle class="u" cx="16.2" cy="49.2" r="4.2"/><circle class="p" cx="27.2" cy="49.2" r="4.2"/><circle class="u" cx="38.2" cy="49.2" r="4.2"/><circle class="u" cx="49.2" cy="49.2" r="4.2"/><circle class="u" cx="5.2" cy="60.2" r="4.2"/><circle class="u" cx="16.2" cy="60.2" r="4.2"/><circle class="p" cx="27.2" cy="60.2" r="4.2"/><circle class="u" cx="38.2" cy="60.2" r="4.2"/><circle class="u" cx="49.2" cy="60.2" r="4.2"/><circle class="u" cx="5.2" cy="71.2" r="4.2"/><circle class="p" cx="16.2" cy="71.2" r="4.2"/><circle class="p" cx="27.2" cy="71.2" r="4.2"/><circle class="p" cx="38.2" cy="71.2" r="4.2"/><circle class="u" cx="49.2" cy="71.2" r="4.2"/></svg><span class="tekst">krever deg</span></div>
+  <div class="ned"><span>1 avvik</span><span>1 i kø</span><span>3 tråder</span></div>
+</section>
+
+<section class="modul krever">
+  <div class="lbl"><span>Godkjenning</span><span class="mono">3 min</span></div>
+  <h3>Armere alarmen</h3>
+  <p>Bedt av <b>kode:v10b:ajax-fix</b><br>Høyrisiko · ingen eksternt innhold i kjeden</p>
+  <div class="knapper"><button class="ja">Godkjenn</button><button>Avslå</button></div>
+</section>
+
+<section class="modul">
+  <div class="lbl"><span>Avvik</span></div>
+  <div class="l"><div class="n">hermod-backup<small>siste kjøring 03:10</small></div><div class="t feil">FEILET</div></div>
+</section>
+
+<section class="modul">
+  <div class="lbl"><span>Køen</span><span class="mono">$1.87 i dag</span></div>
+  <div class="l">
+    <div class="n">appcore-traadflataklient<small>huginn · Sonnet</small></div><div class="t">$0.62</div>
+    <div class="spor"><i class="på"></i><i class="nå"></i><i></i><i></i></div>
+  </div>
+  <div class="l"><div class="n" style="color:var(--dempet)">appcore-legg-konstant<small>ferdig · fe50dd4</small></div><div class="t">$1.25</div></div>
+</section>
+
+<section class="modul">
+  <div class="lbl"><span>Tråder</span></div>
+  <div class="l"><div class="n">kode:huginn</div><div class="t">8 min</div></div>
+  <div class="l"><div class="n">cto</div><div class="t">1 t</div></div>
+  <div class="l"><div class="n">kode:v10b:ajax-fix</div><div class="t krever">VENTER</div></div>
+</section>
+
+<section class="modul">
+  <div class="lbl"><span>I dag</span></div>
+  <div class="l"><div class="n">Trening</div><div class="t">18:00</div></div>
+  <div class="l"><div class="n">Standup</div><div class="t">man 08:30</div></div>
+</section>
+
+<div class="fot"><span class="lbl mono" style="font-family:'DM Mono';font-weight:500;letter-spacing:.02em;text-transform:none">huginn fe50dd4</span><span class="lbl">plattform ok · kjerne ok</span></div>
+</body>
+</html>

@@ -1,0 +1,143 @@
+/*
+  huginn — design-tokens. Eneste kilde for farge, typografi, avstand, form og bevegelse.
+  Retningen og begrunnelsene står i design/identitet.md; her er den som data.
+
+  Struktur (generatoren Scripts/gen-theme.ts leser dette, og håndhever den):
+    :root                              mørk modus (standard)
+    :root[data-tema="lys"]             lys modus, tvunget
+    @media (prefers-color-scheme: light) { :root:not([data-tema="mork"]) }
+                                       lys modus etter systemet — MÅ være identisk med lys-blokken
+  Én egenskap per linje, `--navn: verdi;`. Farger som #rrggbb eller rgba(r, g, b, a).
+  Swift: `Theme.mork` / `Theme.lys` i AppCore er GENERERT herfra (Scripts/gen-theme.ts).
+
+  Navnet sier hva noe ER (rolle), aldri hva det ser ut som: ingen --lilla.
+*/
+
+:root {
+  /* --- Farge: roller ---------------------------------------------------- */
+  --farge-flate-bunn: #0E1526;
+  --farge-glod-1: #222F66;
+  --farge-glod-2: #162052;
+  --farge-glass-1: rgba(255, 255, 255, 0.075);
+  --farge-glass-2: rgba(255, 255, 255, 0.03);
+  --farge-kant: rgba(255, 255, 255, 0.07);
+  --farge-kant-lys: rgba(255, 255, 255, 0.05);
+  --farge-spor: rgba(255, 255, 255, 0.09);
+  --farge-band: rgba(0, 0, 0, 0.28);
+  --farge-tekst: #DDE2EF;
+  --farge-dempet: #939CB2;
+  --farge-svak: #5C6479;
+  --farge-aksent: #8191E8;
+  --farge-aksent-fyll-1: #5A6CD6;
+  --farge-aksent-fyll-2: #4F61CC;
+  --farge-aksent-tone: rgba(129, 145, 232, 0.18);
+  --farge-pa-aksent: #FFFFFF;
+  --farge-feil: #F27C7C;
+  --farge-ok: #6FCFA2;
+  /* Flaten tekstrollene måles mot (brikken over bunnen). Testen i AppCore krever >= 4,5. */
+  --farge-kontrastflate: #11172A;
+
+  /* --- Typografi (CSS-flater; Swift speiler dette når første Swift-flate bygges) */
+  --font-visning: "Archivo", system-ui, sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, monospace;
+  --vekt-stor: 700;
+  --vekt-tekst: 500;
+  --vekt-etikett: 400;
+  --vekt-etikett-aksent: 600;
+  --str-hero: 40px;
+  --lh-hero: 38px;
+  --str-tall: 38px;
+  --lh-tall: 42px;
+  --str-h2: 26px;
+  --lh-h2: 30px;
+  --str-tekst: 15px;
+  --lh-tekst: 22px;
+  --str-etikett: 10.5px;
+  --lh-etikett: 16px;
+  --str-stegetikett: 9px;
+  --lh-stegetikett: 12px;
+  --sperring-etikett: 0.14em;
+  --sperring-knapp: 0.14em;
+  --sperring-hero: -0.01em;
+
+  /* --- Avstand: 4-basert --------------------------------------------------- */
+  --avstand-1: 4px;
+  --avstand-2: 8px;
+  --avstand-3: 12px;
+  --avstand-4: 16px;
+  --avstand-5: 24px;
+
+  /* --- Form: radiene blandes aldri utenfor skalaen ------------------------- */
+  --radius-brikke: 28px;
+  --radius-knapp: 18px;
+  --radius-band: 16px;
+  --radius-chip: 14px;
+  --radius-strek: 999px;
+
+  /* --- Mål ------------------------------------------------------------------ */
+  --maal-knapp: 56px;
+  --maal-tab: 60px;
+  --maal-beroring-min: 44px;
+  --maal-led: 7px;
+  --maal-bar: 5px;
+  --maal-segment: 6px;
+  --blur-glass: 26px;
+
+  /* --- LCD-avlesningen (punktmatrise 5x7) ----------------------------------- */
+  --lcd-pitch-hero: 15;
+  --lcd-prikk-radius: 0.39;
+
+  /* --- Bevegelse (IKKE prøvd i stilprøvene; tallene er regelen fra web-design) */
+  --varighet-knapp: 120ms;
+  --varighet-brikke: 250ms;
+  --varighet-ark: 350ms;
+  --easing-ut: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+:root[data-tema="lys"] {
+  --farge-flate-bunn: #EEF1F9;
+  --farge-glod-1: #DCE3FF;
+  --farge-glod-2: #E8EBFB;
+  --farge-glass-1: rgba(255, 255, 255, 0.78);
+  --farge-glass-2: rgba(255, 255, 255, 0.52);
+  --farge-kant: rgba(40, 52, 110, 0.09);
+  --farge-kant-lys: rgba(255, 255, 255, 0.9);
+  --farge-spor: rgba(40, 52, 110, 0.10);
+  --farge-band: rgba(40, 52, 110, 0.05);
+  --farge-tekst: #1B2140;
+  --farge-dempet: #5B6580;
+  --farge-svak: #8A93AB;
+  --farge-aksent: #5062CF;
+  --farge-aksent-fyll-1: #5A6CD6;
+  --farge-aksent-fyll-2: #5062CF;
+  --farge-aksent-tone: rgba(80, 98, 207, 0.14);
+  --farge-pa-aksent: #FFFFFF;
+  --farge-feil: #C9414A;
+  --farge-ok: #177F52;
+  --farge-kontrastflate: #F9FAFD;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-tema="mork"]) {
+    --farge-flate-bunn: #EEF1F9;
+    --farge-glod-1: #DCE3FF;
+    --farge-glod-2: #E8EBFB;
+    --farge-glass-1: rgba(255, 255, 255, 0.78);
+    --farge-glass-2: rgba(255, 255, 255, 0.52);
+    --farge-kant: rgba(40, 52, 110, 0.09);
+    --farge-kant-lys: rgba(255, 255, 255, 0.9);
+    --farge-spor: rgba(40, 52, 110, 0.10);
+    --farge-band: rgba(40, 52, 110, 0.05);
+    --farge-tekst: #1B2140;
+    --farge-dempet: #5B6580;
+    --farge-svak: #8A93AB;
+    --farge-aksent: #5062CF;
+    --farge-aksent-fyll-1: #5A6CD6;
+    --farge-aksent-fyll-2: #5062CF;
+    --farge-aksent-tone: rgba(80, 98, 207, 0.14);
+    --farge-pa-aksent: #FFFFFF;
+    --farge-feil: #C9414A;
+    --farge-ok: #177F52;
+    --farge-kontrastflate: #F9FAFD;
+  }
+}

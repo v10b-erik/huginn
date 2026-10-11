@@ -195,6 +195,19 @@ Regler:
   alle skjermer; remote-test.sh baker den inn. Uten den vet du ikke hvilken
   kode som kjører på hvilken enhet (Watch-synk er upålitelig).
 
+## Design (fastsatt 2026-10-11)
+- **Identiteten** er `design/identitet.md` (retning, regler, hva som ble valgt bort og hvorfor), og
+  **`design/tokens.css` er eneste kilde** for farge, typografi, avstand, form og bevegelse. Aldri løse hex-verdier.
+  Retningen revideres bare gjennom en NY runde i `design-direction`, ikke ad hoc.
+- **Swift:** `apple/AppCore/Sources/AppCore/Theme.swift` er GENERERT fra tokens (`bun Scripts/gen-theme.ts`,
+  CI kjører `--sjekk`) — rediger tokens, ikke Theme.swift. `Theme.mork`/`Theme.lys` brukes via
+  `Color(Theme.RGBA)` og `Theme.palett(for:)` (`apple/Sources/ThemeFarge.swift`). `ThemeTests` håndhever
+  WCAG ≥ 4,5 for tekstrollene i begge moduser.
+- **Den hardeste regelen:** farge betyr noe eller er borte. Periwinkle = krever deg/pågår (fylt flate = handling,
+  strek/kant/tone = pågår), rød = avvik, grønn = ok. Aldri farge alene; tilstand står også som ord.
+- **Levende referanse:** `design/utforskning/proeve-b3.html#myk` (kombiner `#lys`, `#rolig`). Server med
+  `python3 -m http.server --directory design/utforskning` og se den; bare «Nå»-skjermen er tegnet.
+
 ## Konvensjoner
 - **Scheme-navn:** `App` (iOS), `App-macOS`. Testmål: `AppTests` (simulator),
   `AppCoreTests` (SwiftPM). Ikke opprett nye schemes uten å oppdatere dette.

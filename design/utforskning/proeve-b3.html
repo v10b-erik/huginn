@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve B3 — B1 i referansens språk</title>
+<!--
+  B3 = B1 (mørkt instrument, punktmatrise-hero) oversatt til språket i skjermbildet Erik la ved
+       (iPhone-hjemskjerm-widget: periwinkle-blå, tung versal-grotesk, bredt sperret mono-etiketter, avrundede
+       glassbrikker, tre tallkolonner med enhet og tynne fremdriftsstreker, innfelt «NEXT»-bånd, nedre tab-bar).
+  Beholdt fra B1:   punktmatrise-«1» som hero (D-tallet), rolig-dag-tilstanden, innholdet, rolle-logikken.
+  Hentet fra referansen:
+    Farge        ÉN periwinkle #7488F0 for alt interaktivt. Erstatter ravgult OG cyan (fargeblind-målt: ΔE ≥ 42
+                 mot de andre rollene for normalt syn/protan/deutan, 21 for tritan; cyan var 8–17).
+                 Skillet «krever deg» / «pågår» går på FORM: fylt flate = krever deg, strek/kant = pågår.
+    Typografi    Archivo 800 (store ord og tall) + Martian Mono 400/600 (etiketter og enheter, versaler, sperret).
+    Form         Radier i en fast skala: brikke 24 · knapp 16 · chip 12 · strek 3. Tab-bar nederst.
+    Flate        Marineblå med glassbrikker: halvgjennomsiktig fyll, 1 px lys kant, en lyskant øverst.
+  Rolig dag:        åpne med #rolig. Lys modus: #lys. Mykere (runde 6): #myk (kombineres: #myk,lys).
+  Rød (feil) og grønn (ok) er uendret og bærer fortsatt bare avvik og «alt i orden».
+  Bevisst avvik fra referansen: periwinkle står BARE på det som krever deg eller pågår (godkjenningsbrikken,
+  heroen, kø/tråd-linjer og strekene). Referansen bruker den som pynt på alle etiketter; her ville det tappet fargen
+  for betydning. Dato- og NESTE-etiketter er derfor dempet. Lett å snu tilbake: .lbl.a på de to stedene.
+-->
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(fonts/archivo-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:500;src:url(fonts/archivo-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:800;src:url(fonts/archivo-800-normal.woff2) format("woff2")}
+@font-face{font-family:"Martian Mono";font-weight:400;src:url(fonts/martian-mono-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Martian Mono";font-weight:600;src:url(fonts/martian-mono-600-normal.woff2) format("woff2")}
+
+:root{
+  --bunn:#080C16; --tekst:#E6E9F2; --dempet:#8A93A8; --svak:#5C6479;
+  --aksent:#7488F0; --aksent-fyll-1:#5367D8; --aksent-fyll-2:#4659CC; --på-aksent:#FFFFFF;
+  --feil:#FF6B6B; --ok:#5FD39A;
+  --glass-1:rgba(255,255,255,.075); --glass-2:rgba(255,255,255,.03); --kant:rgba(255,255,255,.10); --kant-lys:rgba(255,255,255,.07);
+  --spor:rgba(255,255,255,.09);
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --r-brikke:24px; --r-knapp:16px; --r-chip:12px; --r-strek:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#04060B}
+body{position:relative;width:390px;min-height:844px;margin:0 auto;color:var(--tekst);
+  font:500 15px/22px "Archivo",sans-serif;-webkit-font-smoothing:antialiased;padding:var(--s4) var(--s4) var(--s5);
+  background:
+    radial-gradient(120% 45% at 85% -8%,#1C2A5C 0%,transparent 62%),
+    radial-gradient(90% 40% at -10% 34%,#121B42 0%,transparent 60%),
+    linear-gradient(180deg,#080C16 0%,#0A101E 100%)}
+/* glans: to diagonale lyskanter, som referansens bølgeform, svært dempet */
+body::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(118deg,transparent 41%,rgba(255,255,255,.045) 41.4%,rgba(255,255,255,.012) 47%,transparent 47.4%),
+    linear-gradient(118deg,transparent 63%,rgba(255,255,255,.035) 63.4%,rgba(255,255,255,.008) 69%,transparent 69.4%)}
+body>*{position:relative}
+.mono{font-family:"Martian Mono",monospace;font-variant-numeric:tabular-nums}
+.lbl{font:600 10.5px/16px "Martian Mono";letter-spacing:.16em;text-transform:uppercase;color:var(--dempet)}
+.lbl.a{color:var(--aksent)}
+
+.glass{background:linear-gradient(180deg,var(--glass-1),var(--glass-2));border:1px solid var(--kant);border-radius:var(--r-brikke);
+  box-shadow:inset 0 1px 0 var(--kant-lys);backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3)}
+
+/* topp */
+.topp{display:flex;justify-content:space-between;align-items:center;margin:var(--s1) var(--s1) var(--s4)}
+.topp .lbl.a{font-size:11.5px}
+.status{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-radius:var(--r-chip);
+  background:linear-gradient(180deg,var(--glass-1),var(--glass-2));border:1px solid var(--kant)}
+.led{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.led.feil{background:var(--feil)}.led.aks{background:var(--aksent)}.led.av{background:var(--svak)}
+
+/* hero */
+.hero{padding:var(--s5);margin-bottom:var(--s3);display:flex;align-items:center;gap:var(--s5)}
+.pm{display:block;flex:none;--lit:var(--aksent);--unlit:rgba(255,255,255,.07)}
+.pm svg{display:block}.pm .p{fill:var(--lit)}.pm .u{fill:var(--unlit)}
+.hero h1{font:800 40px/38px "Archivo";letter-spacing:-.02em;text-transform:uppercase}
+.hero .sub{margin-top:var(--s3)}
+
+/* krever-brikken: fylt knapp, innfelte bånd som «NEXT» */
+.krever{padding:var(--s4);margin-bottom:var(--s3);border-color:rgba(116,136,240,.55);
+  background:linear-gradient(180deg,rgba(116,136,240,.14),rgba(116,136,240,.04))}
+.krever .topprad{display:flex;justify-content:space-between;margin-bottom:var(--s2)}
+.krever h2{font:800 26px/30px "Archivo";letter-spacing:-.015em;margin-bottom:var(--s3)}
+.bånd{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);margin-bottom:var(--s2);border-radius:14px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06)}
+.bånd .v{flex:1;font-weight:500;font-size:15px}
+.bånd .h{margin-left:auto}
+.ok-t{color:var(--ok)}
+.knapper{display:grid;grid-template-columns:3fr 2fr;gap:var(--s2);margin-top:var(--s4)}
+button{height:56px;border-radius:var(--r-knapp);font:600 12.5px/1 "Martian Mono";letter-spacing:.16em;text-transform:uppercase;cursor:pointer;color:var(--tekst);
+  background:linear-gradient(180deg,var(--glass-1),var(--glass-2));border:1px solid var(--kant);box-shadow:inset 0 1px 0 var(--kant-lys)}
+button.ja{color:var(--på-aksent);border-color:rgba(255,255,255,.22);
+  background:linear-gradient(180deg,var(--aksent-fyll-1),var(--aksent-fyll-2));box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 10px 22px -10px rgba(84,105,212,.7)}
+button:focus-visible{outline:2px solid var(--tekst);outline-offset:3px}
+
+/* tre tallkolonner (STEPS / MOVE / EXERCISE) */
+.tall3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4);padding:var(--s4) var(--s5) var(--s4);margin-bottom:var(--s3)}
+.kol .v{font:800 38px/42px "Archivo";letter-spacing:-.02em;margin:2px 0 var(--s2);font-variant-numeric:tabular-nums}
+.kol .v small{font:600 10px/12px "Martian Mono";letter-spacing:.14em;color:var(--dempet);margin-left:4px;text-transform:uppercase}
+.kol .tx{font:400 10.5px/16px "Martian Mono";color:var(--dempet);margin-top:var(--s2);letter-spacing:.02em}
+.bar{height:5px;border-radius:var(--r-strek);background:var(--spor);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:var(--r-strek);background:var(--aksent)}
+.bar.feil i{background:var(--feil)}
+.kol.feil .v{color:var(--feil)}
+
+/* lister */
+.liste{padding:var(--s4) var(--s5) var(--s3);margin-bottom:var(--s3)}
+.liste>.lbl{display:flex;justify-content:space-between;margin-bottom:var(--s3)}
+.r{display:grid;grid-template-columns:14px 1fr auto;column-gap:var(--s3);align-items:center;padding:var(--s3) 0;border-top:1px solid rgba(255,255,255,.07)}
+.r:first-of-type{border-top:0;padding-top:0}
+.r .n{font-weight:500}
+.r .n small{display:block;font:400 10.5px/16px "Martian Mono";color:var(--dempet);margin-top:1px}
+.r .t{font:400 12px/16px "Martian Mono";color:var(--dempet);font-variant-numeric:tabular-nums;text-align:right}
+.r .t.feil{color:var(--feil);font-weight:600;letter-spacing:.06em}
+.r .t.aks{color:var(--aksent);font-weight:600;letter-spacing:.06em}
+.seg{grid-column:2/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:var(--s3)}
+.seg i{height:6px;border-radius:var(--r-strek);background:var(--spor)}
+.seg i.på{background:rgba(116,136,240,.45)}.seg i.nå{background:var(--aksent)}
+.segn{grid-column:2/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font:600 9px/12px "Martian Mono";letter-spacing:.12em;text-transform:uppercase;color:var(--dempet);margin-top:6px}
+
+/* NESTE-bånd */
+.neste{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);margin-bottom:var(--s2);border-radius:var(--r-chip);
+  background:linear-gradient(180deg,var(--glass-1),var(--glass-2));border:1px solid var(--kant)}
+.neste .v{font-weight:500;flex:1}
+.neste .t{font:400 12px/16px "Martian Mono";color:var(--dempet)}
+.neste-blokk{margin-bottom:var(--s3)}
+
+/* tab-bar */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2);margin:var(--s4) 0 var(--s3)}
+.tabs button{height:60px;font-size:10.5px;letter-spacing:.12em;padding:0}
+.tabs button.på{color:var(--aksent);border-color:rgba(116,136,240,.55);
+  background:linear-gradient(180deg,rgba(116,136,240,.22),rgba(116,136,240,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+
+.fot{display:flex;justify-content:space-between;padding:0 var(--s1)}
+.fot .lbl{letter-spacing:.06em;text-transform:none}
+
+/* rolig dag */
+.rolig .pm{--lit:var(--svak)}
+.rolig .krever,.rolig .avv{display:none}
+.rolig .hero h1{color:var(--dempet)}
+.rolig .hero .sub{color:var(--dempet)}
+</style>
+<link rel="stylesheet" href="b3-tema.css">
+</head>
+<body>
+
+<div class="topp">
+  <span class="lbl" style="color:var(--tekst)">Søndag · 15:52</span>
+  <span class="status"><i class="led"></i><span class="lbl" style="color:var(--tekst)">Plattform ok</span></span>
+</div>
+
+<section class="glass hero" role="status">
+  <span class="pm" id="stor" data-n="1" data-pitch="15"></span>
+  <div><h1 id="heroTekst">Krever<br>deg</h1><div class="lbl a sub" id="heroSub">Godkjenning · 3 min</div></div>
+</section>
+
+<section class="glass krever">
+  <div class="topprad"><span class="lbl a">Godkjenning</span><span class="lbl mono">00:03:12</span></div>
+  <h2>Armere alarmen</h2>
+  <div class="bånd"><span class="lbl a">Fra</span><span class="v">kode:v10b:ajax-fix</span><span class="lbl h ok-t">Rent</span></div>
+  <div class="bånd"><span class="lbl a">Klasse</span><span class="v">Høyrisiko</span></div>
+  <div class="knapper"><button class="ja">Godkjenn</button><button>Avslå</button></div>
+</section>
+
+<section class="glass tall3">
+  <div class="kol feil" id="kAvvik"><span class="lbl">Avvik</span><div class="v">1</div><div class="bar feil"><i style="width:100%"></i></div><div class="tx">siden 03:10</div></div>
+  <div class="kol"><span class="lbl">Kø</span><div class="v">1<small>/ 2</small></div><div class="bar"><i style="width:50%"></i></div><div class="tx">i review</div></div>
+  <div class="kol"><span class="lbl">Tråder</span><div class="v">3</div><div class="bar"><i style="width:33%"></i></div><div class="tx">1 venter</div></div>
+</section>
+
+<section class="glass liste avv">
+  <div class="lbl"><span>Avvik</span></div>
+  <div class="r"><i class="led feil"></i><div class="n">hermod-backup<small>siste kjøring 03:10</small></div><div class="t feil">FEILET</div></div>
+</section>
+
+<section class="glass liste">
+  <div class="lbl"><span>Køen</span><span class="mono" style="letter-spacing:.04em;text-transform:none">$1.87 i dag</span></div>
+  <div class="r">
+    <i class="led aks"></i><div class="n">appcore-traadflataklient<small>huginn · Sonnet</small></div><div class="t">$0.62</div>
+    <div class="seg"><i class="på"></i><i class="nå"></i><i></i><i></i></div>
+    <div class="segn"><span>arbeid</span><span>review</span><span>merge</span><span>deploy</span></div>
+  </div>
+  <div class="r"><i class="led"></i><div class="n" style="color:var(--dempet)">appcore-legg-konstant<small>ferdig · fe50dd4</small></div><div class="t">$1.25</div></div>
+</section>
+
+<section class="glass liste">
+  <div class="lbl"><span>Tråder</span></div>
+  <div class="r"><i class="led aks"></i><div class="n">kode:huginn</div><div class="t">8 min</div></div>
+  <div class="r"><i class="led av"></i><div class="n">cto</div><div class="t">1 t</div></div>
+  <div class="r"><i class="led aks" id="venterLed"></i><div class="n">kode:v10b:ajax-fix</div><div class="t aks" id="venterT">VENTER</div></div>
+</section>
+
+<div class="neste-blokk">
+  <div class="neste"><span class="lbl">Neste</span><span class="v">Trening</span><span class="t">I dag 18:00</span></div>
+  <div class="neste"><span class="lbl">Så</span><span class="v">Standup</span><span class="t">Man 08:30</span></div>
+</div>
+
+<nav class="tabs" aria-label="Hovednavigasjon">
+  <button class="på" aria-current="page">Nå</button><button>Tråder</button><button>Kø</button><button>Samtale</button>
+</nav>
+
+<div class="fot"><span class="lbl">huginn fe50dd4</span><span class="lbl">plattform · kjerne</span></div>
+
+<script src="punkt.js"></script>
+<script>
+const flagg = Object.fromEntries(location.hash.slice(1).split(",").filter(Boolean).map((t) => t.split("=")));
+if ("lys" in flagg) document.documentElement.classList.add("lys");
+if ("myk" in flagg) document.documentElement.classList.add("myk");
+if ("rolig" in flagg) {
+  document.body.classList.add("rolig");
+  document.getElementById("stor").dataset.n = "0";
+  document.getElementById("heroTekst").innerHTML = "Alt<br>rolig";
+  document.getElementById("heroSub").textContent = "Ingenting venter på deg";
+  document.querySelector(".tall3 .kol:nth-child(1)").classList.remove("feil");
+  document.getElementById("kAvvik").style.display = "";
+  document.querySelector("#kAvvik .v").textContent = "0"; document.querySelector("#kAvvik .tx").textContent = "ingen";
+  document.querySelector("#kAvvik .bar i").style.width = "0";
+  document.querySelector(".tall3 .kol:nth-child(3) .tx").textContent = "ingen venter";
+  document.querySelector(".tall3 .kol:nth-child(3) .bar i").style.width = "0";
+  document.getElementById("venterLed").className = "led av";
+  document.getElementById("venterT").className = "t"; document.getElementById("venterT").textContent = "8 min";
+}
+</script>
+</body>
+</html>

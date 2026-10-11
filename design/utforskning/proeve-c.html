@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve C — Redaksjonell</title>
+<!--
+  PRØVE C — REDAKSJONELL / PRINT (forsiden på en avis, ikke et dashbord)
+  Tradisjon:    Avisforside: masthead med dobbel strek, kicker + overskrift + ingress, spalter med
+                spaltestrek, punktlinjer i innholdsfortegnelsen. Hierarki = «hva er dagens hovedsak».
+  Typografi:    Newsreader (overskrift/brødtekst, 400/600 + kursiv) + IBM Plex Sans Condensed (kicker,
+                datolinje, tider; 500/600, versaler).
+  Palett:       Hvit flate, blekk #141414, avispapirgrå streker. Eneste farge er uthevingstusj #FFE14D, bare for
+                «krever deg»; avvik er en svart invers etikett. (Bevisst IKKE krem + salvie: slop-tell,
+                og bevisst ikke rødt, som prøve A allerede eier.)
+  Spacing:      4 · 8 · 12 · 20 · 32 (typografisk rytme, 24 px grunnlinje).
+  Signaturgrep: «Nå» skrevet som en kort briefing: køen og dagen er SETNINGER, ikke tabeller. Det er også
+                akkurat teksten talepersonen kan lese opp (steg 7).
+  Hvorfor:      Rolig og presis uten instrumentpanel: en leser som skal vite hva som er viktigst før den
+                ser detaljene, og som tåler å lese to linjer.
+-->
+<style>
+@font-face{font-family:"Newsreader";font-weight:400;font-style:normal;src:url(fonts/newsreader-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Newsreader";font-weight:600;font-style:normal;src:url(fonts/newsreader-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Newsreader";font-weight:400;font-style:italic;src:url(fonts/newsreader-400-italic.woff2) format("woff2")}
+@font-face{font-family:"Plex Cond";font-weight:500;src:url(fonts/ibm-plex-sans-condensed-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex Cond";font-weight:600;src:url(fonts/ibm-plex-sans-condensed-600-normal.woff2) format("woff2")}
+
+:root{
+  --flate:#FFFFFF; --blekk:#141414; --dempet:#6A6A66; --strek:#141414; --hår:#D4D2CC;
+  --marker:#FFE14D;
+  --s1:4px; --s2:8px; --s3:12px; --s4:20px; --s5:32px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#EDEBE6}
+body{width:390px;min-height:844px;margin:0 auto;background:var(--flate);color:var(--blekk);
+  font:400 16px/24px "Newsreader",serif;-webkit-font-smoothing:antialiased;padding:var(--s4) 22px var(--s4)}
+.kick{font:600 11.5px/16px "Plex Cond";letter-spacing:.14em;text-transform:uppercase}
+.dim{color:var(--dempet)}
+.mark{background:linear-gradient(transparent 12%,var(--marker) 12%,var(--marker) 92%,transparent 92%);padding:0 3px;margin:0 -3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.inv{background:var(--blekk);color:#fff;padding:1px 6px;font:600 11.5px/18px "Plex Cond";letter-spacing:.12em;text-transform:uppercase}
+.tab{font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{text-align:center;padding-bottom:var(--s3);border-bottom:3px double var(--strek)}
+.mast h1{font:600 44px/44px "Newsreader";letter-spacing:-.02em}
+.datolinje{display:flex;justify-content:space-between;padding:var(--s2) 0;border-bottom:1px solid var(--strek);font:500 11.5px/16px "Plex Cond";letter-spacing:.1em;text-transform:uppercase}
+
+/* hovedsaken */
+.lead{padding:var(--s4) 0;border-bottom:1px solid var(--strek)}
+.lead .kick{margin-bottom:var(--s2)}
+.lead h2{font:600 32px/34px "Newsreader";letter-spacing:-.018em;margin-bottom:var(--s3)}
+.lead p{font:italic 400 17px/24px "Newsreader";color:#3A3A37}
+.lead .meta{font:500 11.5px/16px "Plex Cond";letter-spacing:.08em;text-transform:uppercase;color:var(--dempet);margin:var(--s3) 0 var(--s4)}
+.handl{display:flex;gap:var(--s3);align-items:center}
+button{font:600 13px/1 "Plex Cond";letter-spacing:.12em;text-transform:uppercase;height:48px;border-radius:0;cursor:pointer;border:1.5px solid var(--blekk)}
+button.ja{background:var(--blekk);color:#fff;padding:0 28px}
+button.nei{background:transparent;color:var(--blekk);border-color:transparent;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px;padding:0 var(--s2)}
+button:focus-visible{outline:3px solid var(--blekk);outline-offset:2px}
+
+/* resten: kort og tydelig */
+.brief{padding:var(--s4) 0;border-bottom:1px solid var(--hår)}
+.brief .kick{margin-bottom:var(--s1)}
+.brief p{font-size:16.5px;line-height:24px}
+.brief p em{font-style:italic}
+.brief p strong{font-weight:600}
+
+/* innholdsfortegnelse med punktlinje */
+.reg{padding:var(--s4) 0 var(--s3);border-bottom:1px solid var(--hår)}
+.reg .kick{margin-bottom:var(--s3)}
+.reg li{list-style:none;display:flex;align-items:baseline;gap:6px;font-size:16px;line-height:28px}
+.reg li .pkt{flex:1;border-bottom:1.5px dotted #A9A7A0;transform:translateY(-4px)}
+.reg li .v{font:500 12px/20px "Plex Cond";letter-spacing:.06em;text-transform:uppercase;color:var(--dempet)}
+.reg li .v.mark{background:linear-gradient(transparent 12%,var(--marker) 12%,var(--marker) 92%,transparent 92%);padding:0 3px;margin:0 -3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.inv{background:var(--blekk);color:#fff;padding:1px 6px;font:600 11.5px/18px "Plex Cond";letter-spacing:.12em;text-transform:uppercase}
+.dag{padding:var(--s4) 0}
+.dag .kick{margin-bottom:var(--s2)}
+.dag li{list-style:none;display:grid;grid-template-columns:76px 1fr;line-height:28px}
+.dag li b{font:500 13px/28px "Plex Cond";letter-spacing:.06em;text-transform:uppercase;color:var(--dempet);font-variant-numeric:tabular-nums}
+
+.kol{padding-top:var(--s3);border-top:3px double var(--strek);display:flex;justify-content:space-between;font:500 11px/16px "Plex Cond";letter-spacing:.1em;text-transform:uppercase;color:var(--dempet)}
+</style>
+</head>
+<body>
+
+<header class="mast"><h1>Basic</h1></header>
+<div class="datolinje"><span>Søndag 11. oktober 2026</span><span>Utgave 15:52</span><span>Alt i drift</span></div>
+
+<section class="lead">
+  <div class="kick"><span class="mark">Krever deg</span></div>
+  <h2>Alarmen vil armeres. <span class="mark">Svaret er ditt.</span></h2>
+  <p>Tråden <em>kode:v10b:ajax-fix</em> ba om det for tre minutter siden. Ingen eksternt innhold i kjeden.</p>
+  <div class="meta tab">Høyrisiko · for 3 min siden</div>
+  <div class="handl"><button class="ja">Godkjenn</button><button class="nei">Avslå</button></div>
+</section>
+
+<section class="brief">
+  <div class="kick"><span class="inv">Avvik</span></div>
+  <p><strong>hermod-backup</strong> feilet i natt klokka 03:10. Ingenting annet er galt.</p>
+</section>
+
+<section class="brief">
+  <div class="kick">Køen</div>
+  <p>Én oppgave er i arbeid: <em>appcore-traadflataklient</em> er i review, steg to av fire, og har kostet <span class="tab">$0,62</span>. I dag er <em>appcore-legg-konstant</em> ferdig og deployet som <span class="tab">fe50dd4</span>.</p>
+</section>
+
+<section class="reg">
+  <div class="kick">Tråder i gang</div>
+  <ul>
+    <li>kode:huginn<span class="pkt"></span><span class="v tab">8 min</span></li>
+    <li>cto<span class="pkt"></span><span class="v tab">1 t</span></li>
+    <li>kode:v10b:ajax-fix<span class="pkt"></span><span class="v mark">venter</span></li>
+  </ul>
+</section>
+
+<section class="dag">
+  <div class="kick">I dag</div>
+  <ul>
+    <li><b>18:00</b>Trening</li>
+    <li><b>I morgen</b>Standup 08:30</li>
+  </ul>
+</section>
+
+<footer class="kol"><span style="text-transform:none;letter-spacing:.04em">huginn fe50dd4</span><span>Plattform ok · Kjerne ok</span></footer>
+</body>
+</html>

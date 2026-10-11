@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve B1 — Instrumentpanel + LCD-hero</title>
+<!--
+  B1 = B (instrumentpanelet) + D sitt punktmatrise-tall som ÉN hero.
+  Hva er beholdt fra B:  mørk blåsvart flate, hårstreker med hjørnemerker, Martian Mono + Barlow Condensed,
+                         ravgult = krever deg, cyan = pågår, rød = feil, lampene for avvik/kø/tråder.
+  Hva er hentet fra D:   tallet som punktmatrise (5×7 prikker), som en LCD satt inn i panelet.
+  Endring mot B:         «Krever»-lampen er fjernet fra stripa fordi heroen ER den. Tre lamper igjen.
+  Rolig dag:             åpne med #rolig — heroen viser 0 i grått, og «Krever deg»/«Avvik» forsvinner helt.
+  Hvorfor:               tallet blir det første øyet treffer (som i D), og resten forblir det rolige
+                         instrumentet du valgte.
+-->
+<link rel="stylesheet" href="b-felles.css">
+<style>
+.hero{position:relative;background:#06090D;border:1px solid var(--hår);padding:var(--s4) var(--s4) var(--s3);margin-bottom:var(--s3);
+  box-shadow:inset 0 0 0 3px #0B1016}
+.hero::before,.hero::after{content:"";position:absolute;width:8px;height:8px;border:1px solid var(--tekst)}
+.hero::before{left:-1px;top:-1px;border-right:0;border-bottom:0}
+.hero::after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+.hero .rad1{display:flex;align-items:flex-end;gap:var(--s5)}
+.pm{display:block;flex:none;--lit:var(--krever);--unlit:#161E27}
+.pm svg{display:block}
+.pm .p{fill:var(--lit)}.pm .u{fill:var(--unlit)}
+.hero .tekst{font:600 24px/26px "Barlow Condensed";letter-spacing:.2em;text-transform:uppercase;color:var(--krever);padding-bottom:2px}
+.hero .tekst small{display:block;font:500 12px/18px "Martian Mono";letter-spacing:.04em;text-transform:none;color:var(--dempet);margin-top:var(--s1)}
+.rolig .pm{--lit:var(--dempet)}
+button:not(.ut){color:var(--på-krever,#1A1000)}
+.rolig .hero .tekst{color:var(--dempet)}
+
+.ann3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hår);border:1px solid var(--hår);margin-bottom:var(--s4)}
+.ann3>div{background:var(--panel);padding:var(--s2) var(--s3) var(--s3);min-height:60px;display:flex;flex-direction:column;justify-content:space-between}
+.ann3 .v{font:600 22px/24px "Martian Mono";color:var(--dempet)}
+.ann3 .feil .v,.ann3 .feil .lbl{color:var(--feil)}
+.ann3 .pågår .v{color:var(--pågår)}
+.rolig .kr,.rolig .av{display:none}
+</style>
+<link rel="stylesheet" href="b1-tema.css">
+</head>
+<body>
+<div class="topp"><span class="lbl"><b>Basic</b></span><span class="lbl">SØN 11.10 · 15:52:08</span></div>
+
+<section class="hero" role="status">
+  <div class="rad1"><span class="pm" id="stor" data-n="1" data-pitch="14"></span>
+    <div class="tekst"><span id="heroTekst">Krever deg</span><small id="heroSub">godkjenning · 3 min</small></div></div>
+</section>
+
+<div class="ann3">
+  <div class="feil avc"><span class="lbl"><b>Avvik</b></span><span class="v">1</span></div>
+  <div class="pågår"><span class="lbl">Kø</span><span class="v">1</span></div>
+  <div><span class="lbl">Tråder</span><span class="v">3</span></div>
+</div>
+
+<section class="panel krever kr">
+  <div class="lbl"><b>Krever deg</b><span>00:03:12</span></div>
+  <div class="tittel">Armere alarmen</div>
+  <div class="kv">
+    <span>Fra</span><span>kode:v10b:ajax-fix</span>
+    <span>Taint</span><span class="ok">rent</span>
+    <span>Klasse</span><span>høyrisiko</span>
+  </div>
+  <div class="knapper"><button>Godkjenn</button><button class="ut">Avslå</button></div>
+</section>
+
+<section class="panel av">
+  <div class="lbl"><b>Avvik</b><span>1</span></div>
+  <div class="linje"><i class="led feil"></i><div class="h">hermod-backup<small>siste kjøring 03:10</small></div><div class="t feil">FEILET</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>Kø</b><span>1 aktiv · 1 ferdig</span></div>
+  <div class="linje">
+    <i class="led pågår"></i>
+    <div class="h">appcore-traadflataklient<small>huginn · Sonnet</small></div><div class="t">$0.62</div>
+    <div class="seg"><i class="på">A</i><i class="nå">R</i><i>M</i><i>D</i></div>
+  </div>
+  <div class="linje" style="margin-top:8px"><i class="led ok"></i><div class="h" style="color:var(--dempet)">appcore-legg-konstant<small>fe50dd4</small></div><div class="t">$1.25</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>Tråder</b><span>3</span></div>
+  <div class="linje"><i class="led pågår"></i><div class="h">kode:huginn</div><div class="t">00:08</div></div>
+  <div class="linje"><i class="led"></i><div class="h">cto</div><div class="t">01:02</div></div>
+  <div class="linje"><i class="led krever"></i><div class="h">kode:v10b:ajax-fix</div><div class="t krever">VENTER</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>I dag</b></div>
+  <div class="linje"><i class="led"></i><div class="h">Trening</div><div class="t">18:00</div></div>
+  <div class="linje"><i class="led"></i><div class="h">Standup</div><div class="t">MAN 08:30</div></div>
+</section>
+
+<div class="fot"><span class="lbl" style="text-transform:none;letter-spacing:.04em">huginn fe50dd4</span><span class="lbl"><i class="led ok" style="display:inline-block;margin-right:6px"></i>plattform · kjerne</span></div>
+
+<script src="punkt.js"></script>
+<script>
+// Hash-flagg: #rolig (rolig dag), #farge=hvit|fiolett|lime (runde 3), #bla (periwinkle, mørk) og #lys (periwinkle, lys modus; runde 5).
+const flagg = Object.fromEntries(location.hash.slice(1).split(",").filter(Boolean).map((t) => t.split("=")));
+const FARGE = { hvit: ["#F2F6FA", "#0A0E13"], fiolett: ["#A78BFA", "#0A0E13"], lime: ["#C5F03A", "#0A0E13"] };
+if ("lys" in flagg) document.documentElement.classList.add("lys");
+else if ("bla" in flagg) document.documentElement.classList.add("bla");
+if (FARGE[flagg.farge]) {
+  document.documentElement.style.setProperty("--krever", FARGE[flagg.farge][0]);
+  document.documentElement.style.setProperty("--på-krever", FARGE[flagg.farge][1]);
+}
+if ("rolig" in flagg) {
+  document.body.classList.add("rolig");
+  document.getElementById("stor").dataset.n = "0";
+  document.getElementById("heroTekst").textContent = "Alt rolig";
+  document.getElementById("heroSub").textContent = "ingenting venter på deg";
+  document.querySelector(".ann3 .avc .v").textContent = "0";
+  document.querySelector(".ann3 .feil").classList.remove("feil");
+  document.querySelector(".linje .led.krever").className = "led";
+  const venter = document.querySelector(".linje .t.krever"); venter.className = "t"; venter.textContent = "00:41";
+}
+</script>
+</body>
+</html>

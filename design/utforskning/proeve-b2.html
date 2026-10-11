@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve B2 — Instrumentpanel + punktmatrise overalt</title>
+<!--
+  B2 = B (instrumentpanelet) + D sitt punktmatrise-tall som SPRÅKET for alle tellere.
+  Hva er beholdt fra B:  alt — flaten, panelene, hjørnemerkene, typografien, fargelogikken, de fire lampene.
+  Hva er hentet fra D:   punktmatrise-sifre. Her er de ikke én hero, men annunciator-cellene selv: fire
+                         avlesninger i en rad. «Krever» er en ravgul celle med mørke prikker (en lys lampe),
+                         de andre er mørke celler med fargede prikker.
+  Rolig dag:             åpne med #rolig — alle sifre blir grå, ingen celle lyser, og de to panelene som
+                         ikke har noe å melde forsvinner.
+  Hvorfor:               de som ønsker «lampene» (B) og «tallet» (D) i samme grep: en hel stripe som både lyser
+                         og leses som et instrument.
+-->
+<link rel="stylesheet" href="b-felles.css">
+<style>
+.ann4{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hår);border:1px solid var(--hår);margin-bottom:var(--s4)}
+.ann4>div{background:var(--panel);padding:var(--s3) var(--s2) var(--s3);display:flex;flex-direction:column;align-items:center;gap:var(--s3)}
+.ann4 .pm{--lit:var(--dempet);--unlit:#161E27}
+.ann4 .pm svg{display:block}
+.ann4 .lbl{letter-spacing:.12em}
+.ann4 .k{background:var(--krever)}
+.ann4 .k .lbl{color:#2A1B00}
+.ann4 .k .pm{--lit:#1A1000;--unlit:#E5990F}
+.ann4 .a .pm{--lit:var(--feil)}.ann4 .a .lbl{color:var(--feil)}
+.ann4 .q .pm{--lit:var(--pågår)}
+.pm .p{fill:var(--lit)}.pm .u{fill:var(--unlit)}
+.rolig .ann4 .k{background:var(--panel)}
+.rolig .ann4 .k .lbl{color:var(--dempet)}
+.rolig .ann4 .k .pm{--lit:var(--dempet);--unlit:#161E27}
+.rolig .ann4 .a .pm{--lit:var(--dempet)}.rolig .ann4 .a .lbl{color:var(--dempet)}
+.rolig .kr,.rolig .av{display:none}
+</style>
+</head>
+<body>
+<div class="topp"><span class="lbl"><b>Basic</b></span><span class="lbl">SØN 11.10 · 15:52:08</span></div>
+
+<div class="ann4" role="status">
+  <div class="k"><span class="pm" id="nk" data-n="1" data-pitch="9"></span><span class="lbl"><b>Krever</b></span></div>
+  <div class="a"><span class="pm" id="na" data-n="1" data-pitch="9"></span><span class="lbl"><b>Avvik</b></span></div>
+  <div class="q"><span class="pm" data-n="1" data-pitch="9"></span><span class="lbl">Kø</span></div>
+  <div class="t"><span class="pm" data-n="3" data-pitch="9"></span><span class="lbl">Tråder</span></div>
+</div>
+
+<section class="panel krever kr">
+  <div class="lbl"><b>Krever deg</b><span>00:03:12</span></div>
+  <div class="tittel">Armere alarmen</div>
+  <div class="kv">
+    <span>Fra</span><span>kode:v10b:ajax-fix</span>
+    <span>Taint</span><span class="ok">rent</span>
+    <span>Klasse</span><span>høyrisiko</span>
+  </div>
+  <div class="knapper"><button>Godkjenn</button><button class="ut">Avslå</button></div>
+</section>
+
+<section class="panel av">
+  <div class="lbl"><b>Avvik</b><span>1</span></div>
+  <div class="linje"><i class="led feil"></i><div class="h">hermod-backup<small>siste kjøring 03:10</small></div><div class="t feil">FEILET</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>Kø</b><span>1 aktiv · 1 ferdig</span></div>
+  <div class="linje">
+    <i class="led pågår"></i>
+    <div class="h">appcore-traadflataklient<small>huginn · Sonnet</small></div><div class="t">$0.62</div>
+    <div class="seg"><i class="på">A</i><i class="nå">R</i><i>M</i><i>D</i></div>
+  </div>
+  <div class="linje" style="margin-top:8px"><i class="led ok"></i><div class="h" style="color:var(--dempet)">appcore-legg-konstant<small>fe50dd4</small></div><div class="t">$1.25</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>Tråder</b><span>3</span></div>
+  <div class="linje"><i class="led pågår"></i><div class="h">kode:huginn</div><div class="t">00:08</div></div>
+  <div class="linje"><i class="led"></i><div class="h">cto</div><div class="t">01:02</div></div>
+  <div class="linje"><i class="led krever"></i><div class="h">kode:v10b:ajax-fix</div><div class="t krever">VENTER</div></div>
+</section>
+
+<section class="panel">
+  <div class="lbl"><b>I dag</b></div>
+  <div class="linje"><i class="led"></i><div class="h">Trening</div><div class="t">18:00</div></div>
+  <div class="linje"><i class="led"></i><div class="h">Standup</div><div class="t">MAN 08:30</div></div>
+</section>
+
+<div class="fot"><span class="lbl" style="text-transform:none;letter-spacing:.04em">huginn fe50dd4</span><span class="lbl"><i class="led ok" style="display:inline-block;margin-right:6px"></i>plattform · kjerne</span></div>
+
+<script src="punkt.js"></script>
+<script>
+if (location.hash === "#rolig") {
+  document.body.classList.add("rolig");
+  document.getElementById("nk").dataset.n = "0";
+  document.getElementById("na").dataset.n = "0";
+  document.querySelector(".linje .led.krever").className = "led";
+  document.querySelector(".linje .t.krever").className = "t";
+}
+</script>
+</body>
+</html>

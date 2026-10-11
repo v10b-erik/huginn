@@ -20,6 +20,10 @@ jobs:
         run: |
           export PATH="$HOME/.local/share/swiftly/bin:$PATH"
           swift test --package-path apple/AppCore
+      - name: Tokens (Theme.swift i synk med design/tokens.css)
+        run: |
+          export PATH="$HOME/.bun/bin:$PATH"
+          bun Scripts/gen-theme.ts --sjekk
       - name: Server (bun test)
         run: |
           export PATH="$HOME/.bun/bin:$PATH"

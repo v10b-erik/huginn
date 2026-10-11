@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prøve A — Sveitsisk typografi</title>
+<!--
+  PRØVE A — SVEITSISK TYPOGRAFI (Müller-Brockmann / Gerstner)
+  Tradisjon:    Internasjonal typografisk stil. Rutenett, venstrejustert flagre-høyre, hierarki bare
+                med størrelse og vekt, ingen dekor.
+  Typografi:    Archivo alene (400 / 500 / 800). Ingen mono, ingen serif: hierarkiet er størrelse.
+  Palett:       Papirhvit + blekksvart. ÉN aksent, signalrød, som BARE betyr «krever deg / avvik».
+  Spacing:      4 · 8 · 16 · 24 · 40 · 64 (8-basert), 4 kolonner på 342 px.
+  Signaturgrep: Tallet som status. «1» i 128 px og vekt 800 ER oversikten: en normal dag er et grått «0».
+  Hvorfor:      Briefen sier rolig + teknisk presis + detaljer — presisjon uten pynt, der tomrom gjør
+                roen og at alt står på ett rutenett gjør presisjonen synlig.
+-->
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(fonts/archivo-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:500;src:url(fonts/archivo-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:800;src:url(fonts/archivo-800-normal.woff2) format("woff2")}
+
+:root{
+  --flate:#FFFFFF; --blekk:#111111; --dempet:#6E6E6E; --linje:#111111; --hår:#D9D9D9;
+  --signal:#E3001B;
+  --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:40px; --s6:64px;
+  --kant:24px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#E9E9E9}
+body{width:390px;min-height:844px;margin:0 auto;background:var(--flate);color:var(--blekk);
+  font:400 15px/24px "Archivo",sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+  padding:var(--s4) var(--kant) var(--s4)}
+.etikett{font:500 11px/16px "Archivo";letter-spacing:.09em;text-transform:uppercase}
+.dempet{color:var(--dempet)}
+.signal{color:var(--signal)}
+
+/* masthead */
+.mast{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:var(--s2);border-bottom:2px solid var(--linje)}
+.mast b{font-weight:800}
+
+/* seksjon: nummer i kolonne 1, innhold i 2–4 */
+.sek{display:grid;grid-template-columns:78px 1fr;column-gap:10px;padding:var(--s3) 0 var(--s4);border-bottom:1px solid var(--linje)}
+.sek:last-of-type{border-bottom:0}
+.sek h2{font:500 11px/16px "Archivo";letter-spacing:.09em;text-transform:uppercase;padding-top:6px}
+.sek h2 span{display:block;color:var(--dempet);margin-bottom:var(--s1)}
+
+/* signaturen */
+.tall{font:800 128px/104px "Archivo";letter-spacing:-.06em;margin-left:-6px;color:var(--signal)}
+.tall.null{color:var(--hår)}
+
+.krav h3{font:800 24px/28px "Archivo";letter-spacing:-.015em;margin:var(--s3) 0 var(--s2)}
+.krav p{font-size:13px;line-height:20px;color:var(--dempet)}
+.krav p b{color:var(--blekk);font-weight:500}
+.knapper{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);margin-top:var(--s3)}
+button{font:500 14px/1 "Archivo";letter-spacing:.02em;height:48px;border:2px solid var(--blekk);border-radius:0;background:var(--blekk);color:#fff;cursor:pointer}
+button.ut{background:transparent;color:var(--blekk)}
+button:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+
+.rad{display:grid;grid-template-columns:1fr auto;column-gap:var(--s3);align-items:baseline;padding:var(--s2) 0;border-top:1px solid var(--hår)}
+.rad:first-child{border-top:0;padding-top:0}
+.rad .navn{font-weight:500}
+.rad .verdi{text-align:right}
+.rad small{display:block;font-size:12px;line-height:16px;color:var(--dempet)}
+.spor{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:var(--s2)}
+.spor i{display:block;height:4px;background:var(--hår)}
+.spor i.på{background:var(--dempet)}
+.spor i.nå{background:var(--blekk);height:8px;margin-top:-4px}
+.spor-navn{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font:500 10px/12px "Archivo";letter-spacing:.07em;text-transform:uppercase;color:var(--dempet);margin-top:var(--s1)}
+.tid{display:inline-block;width:72px;color:var(--dempet)}
+
+.fot{padding-top:var(--s3);border-top:2px solid var(--linje);display:flex;justify-content:space-between;font-size:11px;line-height:16px;color:var(--dempet)}
+</style>
+</head>
+<body>
+
+<header class="mast"><span class="etikett"><b>Basic</b></span><span class="etikett dempet">Søn 11.10 · 15:52</span></header>
+
+<section class="sek krav">
+  <h2><span>01</span>Krever deg</h2>
+  <div>
+    <div class="tall" aria-label="1 krever deg">1</div>
+    <h3>Armere alarmen</h3>
+    <p>Bedt av tråd <b>kode:v10b:ajax-fix</b><br>Ingen eksternt innhold i kjeden · for 3 min siden</p>
+    <div class="knapper"><button>Godkjenn</button><button class="ut">Avslå</button></div>
+  </div>
+</section>
+
+<section class="sek">
+  <h2><span>02</span>Avvik</h2>
+  <div>
+    <div class="rad"><div><div class="navn">hermod-backup</div><small>siste kjøring 03:10</small></div><div class="verdi signal">feilet</div></div>
+  </div>
+</section>
+
+<section class="sek">
+  <h2><span>03</span>Køen</h2>
+  <div>
+    <div class="rad">
+      <div><div class="navn">appcore-traadflataklient</div><small>huginn · arbeider Sonnet</small></div>
+      <div class="verdi">$0,62</div>
+      <div class="spor"><i class="på"></i><i class="nå"></i><i></i><i></i></div>
+      <div class="spor-navn"><span>arbeid</span><span>review</span><span>merge</span><span>deploy</span></div>
+    </div>
+    <div class="rad"><div><div class="navn dempet">appcore-legg-konstant</div><small>ferdig · fe50dd4</small></div><div class="verdi dempet">$1,25</div></div>
+  </div>
+</section>
+
+<section class="sek">
+  <h2><span>04</span>Tråder</h2>
+  <div>
+    <div class="rad"><div class="navn">kode:huginn</div><div class="verdi dempet">8 min</div></div>
+    <div class="rad"><div class="navn">cto</div><div class="verdi dempet">1 t</div></div>
+    <div class="rad"><div class="navn">kode:v10b:ajax-fix</div><div class="verdi signal">venter</div></div>
+  </div>
+</section>
+
+<section class="sek">
+  <h2><span>05</span>I dag</h2>
+  <div>
+    <div class="rad"><div><span class="tid">18:00</span>Trening</div></div>
+    <div class="rad"><div><span class="tid">i morgen</span>Standup 08:30</div></div>
+  </div>
+</section>
+
+<footer class="fot"><span>huginn fe50dd4</span><span>plattform ok · kjerne ok</span></footer>
+</body>
+</html>

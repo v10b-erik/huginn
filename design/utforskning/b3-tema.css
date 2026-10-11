@@ -1,0 +1,48 @@
+/* B3: lys modus = frostet glass på lys periwinkle-tåke. Lastes etter B3s egen stil. */
+html.lys{--bunn:#EEF1F9;--tekst:#121830;--dempet:#56607A;--svak:#8A93AB;--aksent:#4659CC;--aksent-fyll-1:#5468DB;--aksent-fyll-2:#4659CC;--på-aksent:#fff;
+  --feil:#C62F3A;--ok:#13804E;--glass-1:rgba(255,255,255,.78);--glass-2:rgba(255,255,255,.52);--kant:rgba(40,52,110,.12);--kant-lys:rgba(255,255,255,.9);--spor:rgba(40,52,110,.10);background:#D9DEEC}
+html.lys body{background:
+  radial-gradient(120% 45% at 85% -8%,#D9E0FF 0%,transparent 62%),
+  radial-gradient(90% 40% at -10% 34%,#E4E8FA 0%,transparent 60%),
+  linear-gradient(180deg,#F3F5FC 0%,#EAEEF8 100%)}
+html.lys body::before{background:
+  linear-gradient(118deg,transparent 41%,rgba(70,89,204,.05) 41.4%,rgba(70,89,204,.012) 47%,transparent 47.4%),
+  linear-gradient(118deg,transparent 63%,rgba(70,89,204,.04) 63.4%,rgba(70,89,204,.01) 69%,transparent 69.4%)}
+html.lys .glass{box-shadow:inset 0 1px 0 var(--kant-lys),0 8px 24px -14px rgba(40,52,110,.28)}
+html.lys .pm{--unlit:rgba(40,52,110,.09)}
+html.lys .bånd{background:rgba(40,52,110,.05);border-color:rgba(40,52,110,.08)}
+html.lys .r{border-top-color:rgba(40,52,110,.10)}
+html.lys .krever{border-color:rgba(70,89,204,.55);background:linear-gradient(180deg,rgba(70,89,204,.12),rgba(70,89,204,.04))}
+html.lys .seg i.på{background:rgba(70,89,204,.30)}
+html.lys .tabs button.på{color:var(--aksent);border-color:rgba(70,89,204,.5);background:linear-gradient(180deg,rgba(70,89,204,.16),rgba(70,89,204,.06));box-shadow:inset 0 1px 0 var(--kant-lys)}
+
+/* ===== MYK (runde 6): «litt mykere å se på». Gjelder begge moduser. ===== */
+@font-face{font-family:"Archivo";font-weight:700;src:url(fonts/archivo-700-normal.woff2) format("woff2")}
+html.myk{--tekst:#DDE2EF;--dempet:#939CB2;--aksent:#8191E8;--aksent-fyll-1:#5A6CD6;--aksent-fyll-2:#4F61CC;
+  --feil:#F27C7C;--ok:#6FCFA2;--kant:rgba(255,255,255,.07);--kant-lys:rgba(255,255,255,.05);
+  --r-brikke:28px;--r-knapp:18px;--r-chip:14px;--r-strek:999px}
+html.myk .hero h1{font-weight:700;letter-spacing:-.01em}
+html.myk .krever h2{font-weight:700}
+html.myk .kol .v{font-weight:700}
+html.myk .lbl{font-weight:400;letter-spacing:.14em}
+html.myk .lbl.a{font-weight:600}
+html.myk button{font-weight:600;letter-spacing:.14em}
+html.myk .bånd{border-radius:16px}
+html.myk .r{border-top-color:rgba(255,255,255,.055)}
+html.myk .glass{backdrop-filter:blur(26px) saturate(1.2);-webkit-backdrop-filter:blur(26px) saturate(1.2)}
+html.myk button.ja,html.myk .tabs button.på{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 8px 20px -12px rgba(84,105,212,.55)}
+html.myk .pm .p{filter:drop-shadow(0 0 5px rgba(129,145,232,.5))}
+html.myk .rolig .pm .p{filter:none}
+html.myk body{background:
+    radial-gradient(120% 50% at 85% -8%,#222F66 0%,transparent 62%),
+    radial-gradient(90% 44% at -10% 34%,#162052 0%,transparent 60%),
+    linear-gradient(180deg,#0B101F 0%,#0E1526 100%)}
+
+html.myk.lys{--tekst:#1B2140;--dempet:#5B6580;--aksent:#5062CF;--aksent-fyll-1:#5A6CD6;--aksent-fyll-2:#5062CF;--feil:#C9414A;--ok:#177F52;
+  --kant:rgba(40,52,110,.09);--kant-lys:rgba(255,255,255,.9)}
+html.myk.lys .pm .p{filter:none}
+html.myk.lys body{background:
+  radial-gradient(120% 45% at 85% -8%,#DCE3FF 0%,transparent 62%),
+  radial-gradient(90% 40% at -10% 34%,#E8EBFB 0%,transparent 60%),
+  linear-gradient(180deg,#F4F6FD 0%,#ECEFF9 100%)}
+html.myk.lys .glass{box-shadow:inset 0 1px 0 var(--kant-lys),0 10px 28px -16px rgba(40,52,110,.22)}

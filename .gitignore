@@ -7,3 +7,6 @@ dist/
 *.xcresult
 .env
 .env.local
+
+# Eriks referansebilder (opphavsrett hos andre) — vises i galleriet, ikke i git
+design/utforskning/referanser/

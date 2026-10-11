@@ -1,0 +1,16 @@
+/* B1: periwinkle (bla) og lys modus (lys). Lastes etter b-felles.css + B1s egen stil. */
+html.bla{--krever:#7488F0;--pågår:#7488F0;--fyll:#4F63D4;--på-krever:#fff}
+html.bla button:not(.ut){background:var(--fyll);border-color:var(--fyll)}
+html.bla .seg i.på{background:rgba(116,136,240,.18);border-color:rgba(116,136,240,.45);color:var(--krever)}
+html.bla .seg i.nå{background:var(--krever);border-color:var(--krever);color:#0A0E13}
+
+/* Lys: instrument på lys flate. LCD-heroen forblir mørk (en LCD satt inn i et lyst apparat). */
+html.lys{--bunn:#E8ECF1;--panel:#F7F9FB;--hår:#C3CCD8;--hår-svak:#DDE3EA;--tekst:#111A25;--dempet:#566475;
+  --krever:#4558C9;--pågår:#4558C9;--fyll:#4558C9;--feil:#C92A35;--ok:#127A4A;--på-krever:#fff;background:#D3DAE2}
+html.lys button:not(.ut){background:var(--fyll);border-color:var(--fyll)}
+html.lys .tittel{color:var(--tekst)}
+html.lys .hero{--krever:#8DA0FF;--dempet:#8294A8;--tekst:#C9D4DF}
+html.lys .hero::before,html.lys .hero::after{border-color:#111A25}
+html.lys .seg i{background:var(--hår-svak);border-color:var(--hår);color:var(--dempet)}
+html.lys .seg i.på{background:rgba(69,88,201,.16);border-color:rgba(69,88,201,.45);color:var(--krever)}
+html.lys .seg i.nå{background:var(--krever);border-color:var(--krever);color:#fff}
