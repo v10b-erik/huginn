@@ -4,6 +4,8 @@ import AppCore
 /// «Nå»: det som venter på deg, og ingenting annet. Viewet tegner bare `NaaSkjerm`; ingen logikk bor her.
 struct NaaView: View {
     @State private var modell: NaaModell
+    /// Hvilken kilde dette er. DEBUG-argumentene for auto-svar virker bare når den er en demo.
+    private let valg: KildeValg
     private let kildeNavn: String
     private let smaltKildeNavn: String
     private let onTilkobling: () -> Void
@@ -21,13 +23,14 @@ struct NaaView: View {
     ///   - onTilkobling: statusbrikken åpner arket med vert, «Koble fra» og «Bytt til demo».
     ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
     init(
-        tilgang: KildeValg.Tilgang, autentisering: (any Autentisering)?, kildeNavn: String, smaltKildeNavn: String? = nil,
+        tilgang: KildeValg.Tilgang, autentisering: (any Autentisering)?, valg: KildeValg, kildeNavn: String, smaltKildeNavn: String? = nil,
         onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil,
         onKontakt: @escaping (Kontakt) -> Void = { _ in }
     ) {
         _modell = State(initialValue: NaaModell(
             kilde: tilgang.kilde, send: autentisering == nil ? nil : tilgang.send, autentisering: autentisering
         ))
+        self.valg = valg
         self.kildeNavn = kildeNavn
         self.smaltKildeNavn = smaltKildeNavn ?? kildeNavn
         self.onTilkobling = onTilkobling
@@ -76,21 +79,23 @@ struct NaaView: View {
             .interactiveDismissDisabled(data.autentiserer)
         }
         .onChange(of: arkData, initial: true) { _, ny in ark = ny }
-        // Kvitteringen er en stille bekreftelse, ikke en tilstand: den går bort av seg selv.
+        // Kvitteringen er en stille bekreftelse som står til neste interaksjon (nytt valg), eller i 30 sekunder.
         .task(id: ferdigKortId) {
             guard ferdigKortId != nil else { return }
-            try? await Task.sleep(for: .seconds(8))
+            try? await Task.sleep(for: .seconds(30))
             if !Task.isCancelled, ferdigKortId != nil { modell.lukkSvar() }
         }
         #if DEBUG
         // Synsløkken: `--auto-svar=godkjenn|avslaa` åpner bekreftelsen for første kort, `--auto-bekreft` trykker bekreft.
         .task {
             let args = ProcessInfo.processInfo.arguments
-            guard let valg = KildeValg.autoSvar(argumenter: args, tillatLive: true) else { return }
+            // Bare demo: mot en live kilde gir autoSvar alltid nil.
+            guard let svarValg = KildeValg.autoSvar(argumenter: args, tillatLive: true, valg: valg) else { return }
             for _ in 0..<100 where modell.skjerm == nil { try? await Task.sleep(for: .milliseconds(50)) }
             guard let g = modell.skjerm?.godkjenninger.first else { return }
-            modell.velg(valg == .godkjenn ? g.godkjenn : g.avslaa)
-            if KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true) {
+            guard let handling = svarValg == .godkjenn ? g.godkjenn : g.avslaa else { return }
+            modell.velg(handling)
+            if KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true, valg: valg) {
                 try? await Task.sleep(for: .milliseconds(1500))
                 modell.bekreftSvar()
             }
@@ -160,7 +165,7 @@ struct NaaView: View {
         ForEach(Array(s.godkjenninger.enumerated()), id: \.element.id) { i, g in
             GodkjenningBrikke(
                 godkjenning: g, onSvar: modell.svar == nil ? nil : { modell.velg($0) },
-                knapper: knapper(for: g), idSuffiks: i == 0 ? "" : "-\(i + 1)"
+                knapper: knapper(for: g), onOppdater: { Task { await modell.oppdaterEtterSvar() } }, idSuffiks: i == 0 ? "" : "-\(i + 1)"
             )
         }
         if !s.venter.isEmpty {
@@ -202,7 +207,10 @@ struct NaaView: View {
     /// som sendes. Én forsendelse om gangen, for alle kortene.
     private func knapper(for g: NaaSkjerm.Godkjenning) -> GodkjenningBrikke.Knapper {
         switch modell.svar?.tilstand {
-        case .sender(let f)? where f.forespørsel.kortId == g.id: .sender
+        case .sender(let f)? where f.forespørsel.kortId == g.id:
+            .sender(f.forespørsel.valg.erAvslag ? "Sender avslag …"
+                : (f.forespørsel.valg.key == "approve" ? "Sender godkjenning …" : "Sender «\(f.forespørsel.valg.label)» …"))
+        case .usikker(let f)? where f.kortId == g.id: .usikker(Svar.usikkerVisning(for: f))
         case .sender?, .autentiserer?, .usikker?, .ferdig?: .av
         default: .aktive
         }
@@ -211,11 +219,14 @@ struct NaaView: View {
     /// Raden over kortene: feil/usikkerhet som avviksrad, eller en stille kvittering.
     @ViewBuilder private var svarRad: some View {
         switch modell.svar?.tilstand {
-        case .usikker?:
-            SvarRad(
-                innhold: .avvik(Svar.usikkerVisning, oppdater: true, kreverNyttToken: false),
-                onOppdater: { Task { await modell.oppdaterEtterSvar() } }, onLukk: { modell.lukkSvar() }
-            )
+        case .usikker(let f)?:
+            // Mens kortet står der, bor usikkerheten INNE i kortet. Er kortet allerede borte, står den her.
+            if modell.synligSkjerm?.godkjenninger.contains(where: { $0.id == f.kortId }) != true {
+                SvarRad(
+                    innhold: .avvik(Svar.usikkerBorteVisning(for: f), oppdater: true, kreverNyttToken: false),
+                    onOppdater: { Task { await modell.oppdaterEtterSvar() } }, onLukk: { modell.lukkSvar() }
+                )
+            }
         case .feil(let f)?:
             let oppdater: Bool = switch f {
             case .alleredeAvgjort, .ukjentKort: true
@@ -227,8 +238,12 @@ struct NaaView: View {
                 onKobleTilPaaNytt: onKobleTilPaaNytt
             )
         case .ferdig(let f)?:
+            let kl = Tid.hhmm(modell.svar?.sistFerdig ?? Date(), kalender: .current)
             SvarRad(
-                innhold: .kvittering(ord: f.valg.erAvslag ? "Avslått" : "Godkjent", tekst: f.forsteLinje),
+                innhold: .kvittering(
+                    ord: "\(f.valg.erAvslag ? "Avslått" : "Godkjent") \(kl)",
+                    tekst: f.valg.key == "approve" || f.valg.erAvslag ? f.forsteLinje : "\(f.forsteLinje) · \(f.valg.label)"
+                ),
                 onOppdater: {}, onLukk: { modell.lukkSvar() }
             )
         default:

@@ -1,11 +1,13 @@
 import SwiftUI
 import AppCore
 
-/// Bekreftelsen før Godkjenn/Avslå. Viser HELE kortteksten (rullbar), hva som skjer, og knappene. Sender ingenting selv:
-/// «Godkjenn» her starter systemets autentisering (en egen dialog), og først etter den sendes noe.
+/// Bekreftelsen før Godkjenn/Avslå. Viser hva som bestemmes (overskrift, risikobåndene fra brikken, HELE teksten rullbar,
+/// og hva som skjer) og knappene. Sender ingenting selv: «Godkjenn» her starter systemets autentisering (en egen dialog),
+/// og først etter den sendes noe.
 ///
-/// Identiteten: Godkjenn er den fylte flaten (handling), Avslå er glass, Avbryt er stille (ingen flate). Konsekvensen står
-/// som ord i et bånd (regel 4), ikke som farge.
+/// Identiteten: handlingen står med kortets egen etikett («✉️ Send», «Godkjenn» for `approve`). Godkjenn er den fylte flaten
+/// (handling), Avslå er glass, Avbryt er stille. Konsekvensen står som ord (regel 4), ikke som farge.
+/// Høyden følger innholdet (`presentationDetents`), og lang tekst ruller i stedet for å skyve knappene ut.
 struct BekreftelseArk: View {
     var forespørsel: Svar.Forespørsel
     /// Systemets dialog er oppe: knappen er av og sier fra (tone/kant, ingen spinner).
@@ -13,34 +15,75 @@ struct BekreftelseArk: View {
     var onBekreft: () -> Void
     var onAvbryt: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var hoyde: CGFloat = 0
 
     private var godkjenner: Bool { !forespørsel.valg.erAvslag }
 
     var body: some View {
+        innhold(rull: true)
+            // Samme innhold uten rulling, usynlig, bare for å måle hvor høyt det vil være.
+            .background(alignment: .top) {
+                innhold(rull: false)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { hoyde = $0 }
+            }
+            .background(Bakgrunn())
+            #if os(iOS)
+            .presentationDetents(hoyde > 0 ? [.height(hoyde + 8), .large] : [.large])
+            .presentationDragIndicator(.visible)
+            #else
+            .frame(minWidth: 420, minHeight: 360)
+            #endif
+    }
+
+    private func innhold(rull: Bool) -> some View {
         let p = Theme.palett(for: scheme)
-        VStack(alignment: .leading, spacing: Theme.Avstand.s4) {
-            Text(godkjenner ? "Godkjenn" : "Avslå")
+        return VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
+            Text(forespørsel.valg.label)
                 .skrift(.etikettAksent).foregroundStyle(Color(godkjenner ? p.aksent : p.dempet))
+                .accessibilityIdentifier("godkjenn.handling")
+            Text(forespørsel.forsteLinje).skrift(.h2).foregroundStyle(Color(p.tekst))
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("godkjenn.tittel")
 
-            // Hele teksten. Kort tekst gir en kort flate; lang tekst tar all ledig høyde og ruller (knappene under er
-            // alltid synlige).
-            ViewThatFits(in: .vertical) {
-                ramme(tekstFlate)
-                ramme(ScrollView { tekstFlate })
+            // Det brikken viser: hvem som ber om det og hvor risikabelt, der man bestemmer seg.
+            if let kilde = forespørsel.kilde {
+                Band(etikett: "Fra", verdi: kilde, ord: forespørsel.kildeRen == true ? "Rent" : nil, ordTone: .ok)
+                    .accessibilityIdentifier("godkjenn.fra")
             }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .accessibilityLabel("Kort: \(forespørsel.tekst)")
-            .accessibilityIdentifier("godkjenn.tekst")
+            if let klasse = forespørsel.klasse {
+                Band(etikett: "Klasse", verdi: klasse)
+                    .accessibilityIdentifier("godkjenn.klasse")
+            }
 
-            Band(etikett: "Hva skjer", verdi: konsekvens, etikettDempet: true)
-            .accessibilityIdentifier("godkjenn.konsekvens")
+            // Resten av kortteksten (overskriften er første linje): hele teksten er overskrift + dette.
+            let rest = forespørsel.rest
+            if !rest.isEmpty {
+                if rull {
+                    ViewThatFits(in: .vertical) {
+                        ramme(restFlate(rest))
+                        ramme(ScrollView { restFlate(rest) })
+                    }
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .accessibilityLabel(rest)
+                    .accessibilityIdentifier("godkjenn.tekst")
+                } else {
+                    ramme(restFlate(rest))
+                }
+            } else if rull {
+                Spacer(minLength: 0)
+            }
+
+            konsekvensFlate(p)
 
             VStack(spacing: Theme.Avstand.s2) {
                 if autentiserer {
                     Text("Bekrefter …").skrift(.knapp)
-                        .foregroundStyle(Color(p.aksent))
+                        .foregroundStyle(Color(p.tekst))
                         .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp)
                         .background(RoundedRectangle(cornerRadius: Theme.Radius.knapp, style: .continuous).fill(Color(p.aksentTone)))
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.knapp, style: .continuous).strokeBorder(Color(p.aksentKant), lineWidth: 1))
@@ -49,10 +92,10 @@ struct BekreftelseArk: View {
                         .accessibilityIdentifier("godkjenn.autentiserer")
                 } else {
                     Button(action: onBekreft) {
-                        Text(godkjenner ? "Godkjenn" : "Avslå").skrift(.knapp)
+                        Text(forespørsel.valg.label).skrift(.knapp)
                     }
                     .buttonStyle(KnappStil(rolle: godkjenner ? .handling : .sekundar))
-                    .accessibilityLabel(godkjenner ? "Godkjenn og bekreft med Face ID eller kode" : "Avslå forespørselen")
+                    .accessibilityLabel(godkjenner ? "\(forespørsel.valg.label), bekreft med Face ID eller kode" : "Avslå forespørselen")
                     .accessibilityIdentifier("godkjenn.bekreft")
                 }
                 Button(action: onAvbryt) {
@@ -62,17 +105,14 @@ struct BekreftelseArk: View {
                 .accessibilityLabel("Avbryt")
                 .accessibilityIdentifier("godkjenn.avbryt")
             }
+            .padding(.top, Theme.Avstand.s1)
         }
         .padding(Theme.Avstand.s5)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Bakgrunn())
-        #if os(macOS)
-        .frame(minWidth: 420, minHeight: 520)
-        #endif
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    private var tekstFlate: some View {
-        Text(forespørsel.tekst)
+    private func restFlate(_ rest: String) -> some View {
+        Text(rest)
             .skrift(.tekst).foregroundStyle(Color(Theme.palett(for: scheme).tekst))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Avstand.s4)
@@ -88,8 +128,27 @@ struct BekreftelseArk: View {
             .clipShape(form)
     }
 
+    /// «Hva skjer»: konkret, med handlingens egen etikett. Fri høyde (ingen linjegrense: teksten kuttes aldri).
+    private func konsekvensFlate(_ p: Theme.Palette) -> some View {
+        let form = RoundedRectangle(cornerRadius: Theme.Radius.band, style: .continuous)
+        return VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
+            Text("Hva skjer").skrift(.etikett).foregroundStyle(Color(p.dempet))
+            Text(konsekvens).skrift(.tekst).foregroundStyle(Color(p.tekst))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, Theme.Avstand.s4)
+        .padding(.vertical, Theme.Avstand.s3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(form.fill(Color(p.band)))
+        .overlay(form.strokeBorder(Color(p.kant), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("godkjenn.konsekvens")
+    }
+
     private var konsekvens: String {
-        godkjenner ? "Godkjenn utfører handlingen nå." : "Avslå forkaster forespørselen."
+        godkjenner
+            ? "«\(forespørsel.valg.label)» utføres nå. Krever Face ID eller enhetskode."
+            : "Forespørselen forkastes. Ingenting utføres."
     }
 }
 

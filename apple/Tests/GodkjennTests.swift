@@ -17,6 +17,11 @@ private struct Bestemt: Autentisering {
         return NaaModell(kilde: t.kilde, send: t.send, autentisering: Bestemt(utfall: aut))
     }
 
+    private func forespørselFor(_ g: NaaSkjerm.Godkjenning) throws -> Svar.Forespørsel {
+        let h = try #require(g.godkjenn)
+        return try #require(g.forespørsel(for: h))
+    }
+
     @Test func utenSkrivevei_ingenTjeneste() async {
         let m = NaaModell(kilde: DemoKilde(variant: .avvik))
         #expect(m.svar == nil)
@@ -27,7 +32,7 @@ private struct Bestemt: Autentisering {
         let m = modell(demo)
         await m.last()
         let g = try #require(m.skjerm?.godkjenninger.first)
-        m.velg(g.godkjenn)
+        m.velg(try #require(g.godkjenn))
         guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("ventet .bekrefter"); return }
         #expect(f.kortId == "demo-alarm" && f.valg.key == "approve")
         #expect(f.tekst == g.tittel, "hele teksten følger med til bekreftelsen")
@@ -38,7 +43,7 @@ private struct Bestemt: Autentisering {
         let m = modell()
         await m.last()
         let g = try #require(m.skjerm?.godkjenninger.first)
-        m.velg(g.godkjenn)
+        m.velg(try #require(g.godkjenn))
         await m.svar?.bekreft()
         await m.last()
         #expect(m.skjerm?.godkjenninger.isEmpty == true)
@@ -61,7 +66,7 @@ private struct Bestemt: Autentisering {
         let m = modell(demo, aut: utfall)
         await m.last()
         let g = try #require(m.skjerm?.godkjenninger.first)
-        m.velg(g.godkjenn)
+        m.velg(try #require(g.godkjenn))
         await m.svar?.bekreft()
         #expect(!demo.erAvgjort("demo-alarm"), "ingenting avgjort uten autentisering")
         await m.last()
@@ -72,14 +77,40 @@ private struct Bestemt: Autentisering {
         let m = modell(DemoAvgjort(atferd: .usikkert))
         await m.last()
         let g = try #require(m.skjerm?.godkjenninger.first)
-        m.velg(g.godkjenn)
+        m.velg(try #require(g.godkjenn))
         await m.svar?.bekreft()
-        #expect(m.svar?.tilstand == .usikker(try #require(g.forespørsel(for: g.godkjenn))))
+        #expect(m.svar?.tilstand == .usikker(try forespørselFor(g)))
         #expect(m.synligSkjerm?.godkjenninger.count == 1, "kortet er ikke bekreftet borte")
         m.velg(g.avslaa)  // ignoreres til kvittert
-        #expect(m.svar?.tilstand == .usikker(try #require(g.forespørsel(for: g.godkjenn))))
+        #expect(m.svar?.tilstand == .usikker(try forespørselFor(g)))
         await m.oppdaterEtterSvar()
         #expect(m.svar?.tilstand == .ingen)
+    }
+
+    /// R2: et kort med flere handlinger har ingen Godkjenn-vei, heller ikke når handlingen lages for hånd.
+    @Test func kortMedFlereHandlingerKanIkkeGodkjennesSelvOmViForsøker() async throws {
+        let demo = DemoAvgjort(handlinger: .flere)
+        let m = modell(demo)
+        await m.last()
+        let g = try #require(m.skjerm?.godkjenninger.first)
+        #expect(g.godkjenn == nil)
+        for key in ["send", "draft", "approve"] {
+            m.velg(NaaSkjerm.Handling(kortId: g.id, valg: .godkjenn, key: key))
+            #expect(m.svar?.tilstand == .ingen)
+        }
+        m.velg(g.avslaa)
+        guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("Avslå skal virke"); return }
+        #expect(f.valg.erAvslag)
+    }
+
+    @Test func énEgenHandlingViserSinEtikettHeltTilBegrunnelsen() async throws {
+        let m = modell(DemoAvgjort(handlinger: .en))
+        await m.last()
+        let g = try #require(m.skjerm?.godkjenninger.first)
+        m.velg(try #require(g.godkjenn))
+        guard case .bekrefter(let f)? = m.svar?.tilstand else { Issue.record("ventet .bekrefter"); return }
+        #expect(f.valg.key == "send" && f.valg.label == "✉️ Send")
+        #expect(f.begrunnelse.hasPrefix("✉️ Send:"))
     }
 
     @Test func ukjentKortIdVelgesAldri() async throws {
@@ -104,9 +135,14 @@ private struct Bestemt: Autentisering {
     }
 
     #if DEBUG
-    @Test func autoAutentiseringFinnesBareIDebugOgVelgesBareMedArgument() async {
-        #expect(velgAutentisering(argumenter: ["--auto-godkjenn"]) is AutoAutentisering)
-        #expect(!(velgAutentisering(argumenter: []) is AutoAutentisering))
+    /// R1: auto-autentisering bare for en demo-kilde og bare med argumentet. Mot live er den alltid den ekte.
+    @Test func autoAutentiseringBareForDemoKilde() {
+        let demo = KildeValg.demo(rolig: false)
+        let live = KildeValg.live(url: URL(string: "https://eksempel.example.com")!, token: "tok-0123456789abcdef01234567")
+        #expect(velgAutentisering(argumenter: ["--auto-godkjenn"], valg: demo) is AutoAutentisering)
+        #expect(!(velgAutentisering(argumenter: [], valg: demo) is AutoAutentisering))
+        #expect(velgAutentisering(argumenter: ["--auto-godkjenn"], valg: live) is LokalAutentisering)
+        #expect(velgAutentisering(argumenter: ["--auto-godkjenn", "--demo"], valg: live) is LokalAutentisering)
     }
     #endif
 }

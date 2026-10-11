@@ -48,10 +48,12 @@ struct AutoAutentisering: Autentisering {
 }
 #endif
 
-/// Hvilken autentisering appen bruker. I release alltid den ekte.
-func velgAutentisering(argumenter: [String]) -> any Autentisering {
+/// Hvilken autentisering appen bruker. I release alltid den ekte. I DEBUG erstattes den av en som alltid lykkes BARE når
+/// kilden er en demo og `--auto-godkjenn` er gitt: mot en live kilde er svaret alltid `LokalAutentisering`, så et glemt
+/// argument (eller en agent som styrer UI) aldri kan godkjenne noe ekte uten biometri.
+func velgAutentisering(argumenter: [String], valg: KildeValg) -> any Autentisering {
     #if DEBUG
-    if KildeValg.brukerAutoGodkjenn(argumenter: argumenter, tillatLive: true) { return AutoAutentisering() }
+    if KildeValg.brukerAutoGodkjenn(argumenter: argumenter, tillatLive: true, valg: valg) { return AutoAutentisering() }
     #endif
     return LokalAutentisering()
 }

@@ -6,17 +6,22 @@ import AppCore
 /// en som er av. Et trykk åpner bare bekreftelsen; ingenting sendes fra brikken.
 struct GodkjenningBrikke: View {
     /// Hva knappene gjør akkurat nå.
-    enum Knapper {
+    enum Knapper: Equatable {
         case aktive
-        /// Av, men synlige: noe annet pågår (en annen forsendelse, systemdialogen) eller en usikkerhet venter på kvittering.
+        /// Noe annet pågår (en annen forsendelse, systemdialogen) eller en usikkerhet venter på kvittering. Knappene er
+        /// BORTE (ikke deaktiverte): en dempet, fylt Godkjenn ser ut som en knapp og bryter regel 2 og 10. Ordet «Venter på svar».
         case av
-        /// Dette kortets svar er ute. Knappene byttes mot en tonet «Sender …» (tone/kant = pågår, ingen spinner).
-        case sender
+        /// Dette kortets svar er ute. Knappene byttes mot en tonet flate med teksten («Sender godkjenning …»): tone og
+        /// kant = pågår (regel 2), ordet i vanlig tekstfarge (kontrast), ingen spinner.
+        case sender(String)
+        /// Dette kortets svar fikk ikke svar: rød lampe + ORD + melding, og Oppdater som eneste valg.
+        case usikker(SvarVisning)
     }
 
     var godkjenning: NaaSkjerm.Godkjenning
     var onSvar: ((NaaSkjerm.Handling) -> Void)?
     var knapper: Knapper = .aktive
+    var onOppdater: (() -> Void)?
     var idSuffiks = ""
     @Environment(\.colorScheme) private var scheme
 
@@ -49,29 +54,8 @@ struct GodkjenningBrikke: View {
                 if let klasse = godkjenning.klasse {
                     Band(etikett: "Klasse", verdi: klasse)
                 }
-                if knapper == .sender {
-                    sender(p)
-                        .padding(.top, Theme.Avstand.s3)
-                } else {
-                    Proporsjonal(vekter: [3, 2], mellomrom: Theme.Avstand.s2) {
-                        Button { onSvar?(godkjenning.godkjenn) } label: {
-                            Text("Godkjenn").skrift(.knapp)
-                        }
-                        .buttonStyle(KnappStil(rolle: .handling))
-                        .accessibilityLabel("Godkjenn: \(forsteLinje)")
-                        .accessibilityIdentifier("godkjennKnapp" + idSuffiks)
-
-                        Button { onSvar?(godkjenning.avslaa) } label: {
-                            Text("Avslå").skrift(.knapp)
-                        }
-                        .buttonStyle(KnappStil(rolle: .sekundar))
-                        .accessibilityLabel("Avslå: \(forsteLinje)")
-                        .accessibilityIdentifier("avslaaKnapp" + idSuffiks)
-                    }
-                    .disabled(onSvar == nil || knapper == .av)
-                    .opacity(onSvar == nil || knapper == .av ? 0.45 : 1)
+                bunn(p)
                     .padding(.top, Theme.Avstand.s3)
-                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -83,7 +67,7 @@ extension GodkjenningBrikke {
     /// Kortets første linje, til VoiceOver (aldri token: brikken kjenner ikke tokenet).
     fileprivate var forsteLinjeEllerTittel: String {
         let l = NaaSkjerm.Godkjenning.forsteLinje(godkjenning.tittel)
-        return l.isEmpty ? godkjenning.tittel : l
+        return l.isEmpty ? Svar.Forespørsel.rens(godkjenning.tittel) : l
     }
 
     fileprivate var forsteLinje: String {
@@ -91,17 +75,95 @@ extension GodkjenningBrikke {
         return l.isEmpty ? "godkjenning" : l
     }
 
-    /// «Sender …»: pågår = tone og kant i aksent (regel 2), uten spinner og uten blinking. Ordet bærer tilstanden (regel 4).
-    fileprivate func sender(_ p: Theme.Palette) -> some View {
+    /// Det som står under kortet: knapper, «Sender …», «Venter på svar» eller usikkerheten.
+    @ViewBuilder fileprivate func bunn(_ p: Theme.Palette) -> some View {
+        switch knapper {
+        case .aktive:
+            knapperad
+        case .av:
+            Text("Venter på svar").skrift(.status).foregroundStyle(Color(p.dempet))
+                .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp)
+                .accessibilityIdentifier("godkjenn.venter" + idSuffiks)
+        case .sender(let tekst):
+            sender(tekst, p)
+        case .usikker(let visning):
+            usikker(visning, p)
+        }
+    }
+
+    @ViewBuilder fileprivate var knapperad: some View {
+        Proporsjonal(vekter: [3, 2], mellomrom: Theme.Avstand.s2) {
+            if let godkjenn = godkjenning.godkjenn {
+                Button { onSvar?(godkjenn) } label: {
+                    Text(godkjenn.label).skrift(.knapp)
+                }
+                .buttonStyle(KnappStil(rolle: .handling))
+                .accessibilityLabel("\(godkjenn.label): \(forsteLinje)")
+                .accessibilityIdentifier("godkjennKnapp" + idSuffiks)
+            } else {
+                // Kortet har flere handlinger enn appen kan bære: ingen Godkjenn-vei, bare ordene (ikke en knapp).
+                FlereValg()
+                    .accessibilityIdentifier("godkjenn.flereValg" + idSuffiks)
+            }
+            Button { onSvar?(godkjenning.avslaa) } label: {
+                Text("Avslå").skrift(.knapp)
+            }
+            .buttonStyle(KnappStil(rolle: .sekundar))
+            .accessibilityLabel("Avslå: \(forsteLinje)")
+            .accessibilityIdentifier("avslaaKnapp" + idSuffiks)
+        }
+        .disabled(onSvar == nil)
+        .opacity(onSvar == nil ? 0.45 : 1)
+    }
+
+    /// «Sender …»: pågår = tone og kant i aksent (regel 2), uten spinner og uten blinking. Ordet står i tekstfarge
+    /// (aksent på aksenttone ga 3,6:1 i lys modus) og bærer tilstanden (regel 4).
+    fileprivate func sender(_ tekst: String, _ p: Theme.Palette) -> some View {
         let form = RoundedRectangle(cornerRadius: Theme.Radius.knapp, style: .continuous)
-        return Text("Sender …").skrift(.knapp)
-            .foregroundStyle(Color(p.aksent))
+        return Text(tekst).skrift(.knapp)
+            .foregroundStyle(Color(p.tekst))
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp)
+            .padding(.horizontal, Theme.Avstand.s3)
             .background(form.fill(Color(p.aksentTone)))
             .overlay(form.strokeBorder(Color(p.aksentKant), lineWidth: 1))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Sender svar: \(forsteLinje)")
+            .accessibilityLabel("\(tekst) \(forsteLinje)")
             .accessibilityIdentifier("godkjenn.sender" + idSuffiks)
+    }
+
+    /// Rød lampe + ORD + melding, og Oppdater som eneste handlingsvalg. Inne i kortet, så kortet ikke skyves ned.
+    fileprivate func usikker(_ v: SvarVisning, _ p: Theme.Palette) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
+            HStack(spacing: Theme.Avstand.s3) {
+                Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+                Text(v.ord).skrift(.status).foregroundStyle(Color(p.feil))
+                    .accessibilityIdentifier("godkjenn.feilOrd")
+                Spacer(minLength: 0)
+            }
+            Text(v.melding).skrift(.tekst).foregroundStyle(Color(p.tekst))
+                .fixedSize(horizontal: false, vertical: true)
+            Button { onOppdater?() } label: { Text("Oppdater").skrift(.knapp) }
+                .buttonStyle(KnappStil(rolle: .sekundar))
+                .accessibilityIdentifier("godkjenn.feilOppdater")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("godkjenn.feil" + idSuffiks)
+    }
+}
+
+/// «FLERE VALG · SVAR I TELEGRAM»: dempet tekst, ikke en knapp.
+private struct FlereValg: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        Text("Flere valg · svar i Telegram").skrift(.status)
+            .foregroundStyle(Color(Theme.palett(for: scheme).dempet))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Flere valg. Svar i Telegram.")
     }
 }
 

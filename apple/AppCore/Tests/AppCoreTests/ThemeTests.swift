@@ -56,6 +56,18 @@ import Testing
         }
     }
 
+    /// «Sender …»-flaten: tone (aksentTone over kontrastflaten) med tekst i `tekst`. Aksentfargen på tonen ga 3,6:1 i lys modus.
+    @Test func tekstPåAksentToneHolderWCAG() {
+        for (navn, p) in moduser {
+            let a = p.aksentTone.a
+            let flate = p.kontrastflate
+            let tone = Theme.RGBA(
+                p.aksentTone.r * a + flate.r * (1 - a), p.aksentTone.g * a + flate.g * (1 - a), p.aksentTone.b * a + flate.b * (1 - a)
+            )
+            #expect(kontrast(p.tekst, tone) >= 4.5, "\(navn): tekst på aksenttone har kontrast \(kontrast(p.tekst, tone))")
+        }
+    }
+
     @Test func svakErAldriTekst() {
         // --farge-svak er for ikke-tekst (slukket LED, tomme spor). Den skal ikke klare tekstkravet:
         // klarer den det, har noen gjort den til tekstfarge uten å si fra, eller skalaen har flyttet seg.

@@ -118,7 +118,7 @@ struct RotView: View {
         let demo = KildeValg.demoAvgjort(argumenter: argumenter, tillatLive: false)
         #endif
         return NaaView(
-            tilgang: valg.lagTilgang(demo: demo), autentisering: velgAutentisering(argumenter: argumenter),
+            tilgang: valg.lagTilgang(demo: demo), autentisering: velgAutentisering(argumenter: argumenter, valg: valg), valg: valg,
             kildeNavn: fot.full, smaltKildeNavn: fot.smal,
             onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
             onKontakt: { kontakt = $0 }
