@@ -1,0 +1,1 @@
+logg inn med /inn?t=<token>

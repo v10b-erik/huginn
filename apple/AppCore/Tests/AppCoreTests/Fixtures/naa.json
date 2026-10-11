@@ -1,0 +1,29 @@
+{
+  "kort": [
+    {
+      "id": "a1b2c3d4e5f6",
+      "name": "deploy",
+      "args": { "produkt": "huginn" },
+      "describe": "Deploy huginn 6c84734 til ygg-v1",
+      "expiresAt": "2026-10-12T08:00:00.000Z",
+      "status": "pending",
+      "createdAt": "2026-10-11T20:00:00.000Z",
+      "actions": [ { "key": "approve", "label": "Godkjenn" }, { "key": "deny", "label": "Avslå" } ],
+      "agent": "einherjar",
+      "threadKey": "mission:ko-abc"
+    },
+    { "id": "ffeeddccbbaa", "name": "reminder", "describe": "Binært kort", "status": "pending" }
+  ],
+  "avvik": [
+    { "art": "tjeneste", "navn": "forgejo", "tekst": "failed", "ts": null, "lenke": "https://ygg-v1.tail908368.ts.net:3449" },
+    { "art": "venter", "navn": "ko-abc", "tekst": "Bygg klient", "ts": "2026-10-11T19:30:15.123Z", "lenke": "shadow#/m/ko-abc" }
+  ],
+  "vord": "https://ygg-v1.tail908368.ts.net:3449",
+  "kalender": [
+    { "tittel": "Tannlege", "kalender": "Privat", "ts": "2026-10-12T07:30:00.000Z", "heleDagen": false },
+    { "tittel": "Ferie", "kalender": "Privat", "ts": "2026-10-13T00:00:00.000Z", "heleDagen": true }
+  ],
+  "paminnelser": [ { "tekst": "Ring banken", "ts": "2026-10-11T22:00:00.000Z" } ],
+  "pausetTil": "2026-10-12T06:00:00.000Z",
+  "jobber": 7
+}

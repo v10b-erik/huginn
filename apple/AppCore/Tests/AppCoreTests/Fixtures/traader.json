@@ -1,0 +1,40 @@
+[
+  {
+    "id": "6f1c2a9e-3b7d-4e0a-9c11-5d2f8a7b0c34",
+    "tittel": "Bygg trådflataklient i AppCore",
+    "egenTittel": false,
+    "forsteMelding": "Lag en klient",
+    "prosjekt": { "id": "p36096ee39a6b", "jd": "21.22", "navn": "huginn", "omrade": "21", "label": "21.22 huginn" },
+    "cwd": "/home/erik/code/huginn",
+    "harness": "claude-code",
+    "lager": "plattform",
+    "profil": "ios-dev",
+    "opprettet": 1760180000000,
+    "sistAktiv": 1760183456789,
+    "storrelseMb": 1.2,
+    "live": { "plattform": true, "telegram": ["tg:-100123:7"], "opptatt": true },
+    "holder": { "type": "plattform", "status": "working", "sistLivstegn": 1760183450000, "leaseTil": 1760183750000, "aktiv": true, "kilde": "einherjar" },
+    "ko": 2,
+    "kode": { "produkt": "huginn", "jd": "21.22", "repo": "/home/erik/code/huginn", "worktree": "/home/erik/code/huginn-ko-x", "gren": "ko-x" }
+  },
+  {
+    "id": "0a4be9d2-77c1-4f3e-8a55-1e9c3d6b2f10",
+    "tittel": "Parkert tråd uten holder",
+    "egenTittel": true,
+    "prosjekt": { "label": "Basic" },
+    "cwd": "/home/erik/basic",
+    "harness": "claude-code",
+    "lager": "operator",
+    "sistAktiv": 1760100000000,
+    "storrelseMb": 0.4,
+    "live": { "plattform": false, "telegram": [], "opptatt": false }
+  },
+  {
+    "id": "c3d8e1f0-12aa-4b9c-b0d7-9f6a4e2c7781",
+    "tittel": "Arkivert, holder fra en framtidig kilde",
+    "sistAktiv": 1759900000000,
+    "holder": { "type": "robot", "aktiv": false, "framtidigFelt": 42 },
+    "arkivert": 1759950000000,
+    "noeNyttFraServeren": { "a": [1, 2, 3] }
+  }
+]
