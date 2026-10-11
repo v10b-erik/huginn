@@ -53,11 +53,13 @@ struct NaaView: View {
             .frame(maxWidth: .infinity)
         }
         #if DEBUG
-        // Synsløkken: `--scroll-venter` åpner med «Venter på deg» øverst (lange skjermer kan ikke vises i ett bilde).
+        // Synsløkken: `--scroll-venter` / `--scroll-traader` åpner med den brikken øverst (lange skjermer kan ikke
+        // vises i ett bilde).
         .task {
-            guard ProcessInfo.processInfo.arguments.contains("--scroll-venter") else { return }
+            let args = ProcessInfo.processInfo.arguments
+            guard let mal = args.contains("--scroll-venter") ? "naaVenter" : (args.contains("--scroll-traader") ? "naaTraader" : nil) else { return }
             try? await Task.sleep(for: .milliseconds(600))
-            proxy.scrollTo("naaVenter", anchor: .top)
+            proxy.scrollTo(mal, anchor: .top)
         }
         #endif
         }
@@ -146,6 +148,10 @@ struct NaaView: View {
             tittel: "Tråder", hoyre: s.skjulteTraader > 0 ? "+ \(s.skjulteTraader) til" : nil,
             rader: s.traader, tomTekst: "Ingen tråder i gang", idPrefiks: "naaTraaderListe"
         )
+        #if DEBUG
+        .padding(.top, ProcessInfo.processInfo.arguments.contains("--scroll-traader") ? 56 : 0)  // under statuslinja i bildet
+        #endif
+        .id("naaTraader")
         if !s.neste.isEmpty {
             VStack(spacing: Theme.Avstand.s2) {
                 ForEach(s.neste) { n in NesteBand(neste: n) }
