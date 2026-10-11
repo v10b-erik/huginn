@@ -57,10 +57,11 @@ struct RotView: View {
                 // ÉN gren for begge: to grener ville gjenskapt viewet ved hvert forsøk og nullstilt det du har skrevet.
                 kobling
             case .koblet(let t):
-                naa(valg: t.kildeValg, onSvar: nil, nyttToken: { modell.visKobling() })
+                naa(valg: t.kildeValg, nyttToken: { modell.visKobling() })
             case .demo(let rolig, let ekte):
-                // Demo kan trykke Godkjenn/Avslå uten effekt; live har ingen skriveveier ennå, så knappene er av.
-                naa(valg: .demo(rolig: rolig, ekte: ekte), onSvar: { _ in }, nyttToken: nil)
+                // Demo avgjør lokalt (kortet forsvinner, ingen nettverk); live sender til trådflata etter bekreftelse
+                // og autentisering.
+                naa(valg: .demo(rolig: rolig, ekte: ekte), nyttToken: nil)
             }
         }
         .sheet(isPresented: $visArk) {
@@ -102,7 +103,7 @@ struct RotView: View {
         )
     }
 
-    private func naa(valg: KildeValg, onSvar: ((NaaSkjerm.Handling) -> Void)?, nyttToken: (() -> Void)?) -> some View {
+    private func naa(valg: KildeValg, nyttToken: (() -> Void)?) -> some View {
         #if DEBUG
         // Synsløkka: `--demo-vert=<host>` får en demo til å se ut som en live-kilde i foten.
         let demoVert = KildeValg.demoVert(argumenter: ProcessInfo.processInfo.arguments, tillatLive: true)
@@ -110,8 +111,15 @@ struct RotView: View {
         let demoVert: String? = nil
         #endif
         let fot = valg.fot(demoVert: demoVert)
+        let argumenter = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        let demo = KildeValg.demoAvgjort(argumenter: argumenter, tillatLive: true)
+        #else
+        let demo = KildeValg.demoAvgjort(argumenter: argumenter, tillatLive: false)
+        #endif
         return NaaView(
-            kilde: valg.lagKilde(), kildeNavn: fot.full, smaltKildeNavn: fot.smal, onSvar: onSvar,
+            tilgang: valg.lagTilgang(demo: demo), autentisering: velgAutentisering(argumenter: argumenter),
+            kildeNavn: fot.full, smaltKildeNavn: fot.smal,
             onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
             onKontakt: { kontakt = $0 }
         )

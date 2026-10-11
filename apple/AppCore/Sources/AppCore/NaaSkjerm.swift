@@ -430,3 +430,8 @@ extension NaaSkjerm.Godkjenning {
         return Svar.Forespørsel(kortId: id, tekst: tittel, valg: valg)
     }
 }
+
+extension NaaSkjerm.Godkjenning {
+    /// Første linje med innhold i en korttekst, til VoiceOver-etiketter.
+    public static func forsteLinje(_ tekst: String) -> String { NaaSkjerm.maal(tekst) }
+}

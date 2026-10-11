@@ -31,6 +31,8 @@ targets:
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Godkjenn spør etter Face ID (LocalAuthentication); uten teksten feiler biometri på enhet.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Huginn bekrefter med Face ID at det er deg som godkjenner."
 
   App-macOS:
     type: application

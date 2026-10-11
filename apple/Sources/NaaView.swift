@@ -6,27 +6,30 @@ struct NaaView: View {
     @State private var modell: NaaModell
     private let kildeNavn: String
     private let smaltKildeNavn: String
-    private let onSvar: ((NaaSkjerm.Handling) -> Void)?
     private let onTilkobling: () -> Void
     private let onKobleTilPaaNytt: (() -> Void)?
     private let onKontakt: (Kontakt) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Bekreftelsen som vises. Egen tilstand (ikke utledet) så arket beholder innholdet mens det lukkes.
+    @State private var ark: ArkData?
 
-    /// - Parameter onSvar: `nil` = Godkjenn/Avslå er synlige men deaktiverte (live-modus har ingen skriveveier).
     /// - Parameters:
+    ///   - tilgang: kilden og skriveveien (Godkjenn/Avslå) bygget sammen, så de deler tilstand (demo: hva som er avgjort).
+    ///   - autentisering: lokal autentisering før Godkjenn. `nil` = ingen skrivevei, og knappene er deaktiverte.
     ///   - onTilkobling: statusbrikken åpner arket med vert, «Koble fra» og «Bytt til demo».
     ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
     init(
-        kilde: any NaaKilde, kildeNavn: String, smaltKildeNavn: String? = nil, onSvar: ((NaaSkjerm.Handling) -> Void)?,
+        tilgang: KildeValg.Tilgang, autentisering: (any Autentisering)?, kildeNavn: String, smaltKildeNavn: String? = nil,
         onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil,
         onKontakt: @escaping (Kontakt) -> Void = { _ in }
     ) {
-        _modell = State(initialValue: NaaModell(kilde: kilde))
+        _modell = State(initialValue: NaaModell(
+            kilde: tilgang.kilde, send: autentisering == nil ? nil : tilgang.send, autentisering: autentisering
+        ))
         self.kildeNavn = kildeNavn
         self.smaltKildeNavn = smaltKildeNavn ?? kildeNavn
-        self.onSvar = onSvar
         self.onTilkobling = onTilkobling
         self.onKobleTilPaaNytt = onKobleTilPaaNytt
         self.onKontakt = onKontakt
@@ -39,7 +42,7 @@ struct NaaView: View {
             VStack(spacing: Theme.Avstand.s3) {
                 topplinje(p)
                 if let feil = modell.feil { feilBrikke(feil) }
-                if let skjerm = modell.skjerm {
+                if let skjerm = modell.synligSkjerm {
                     innhold(skjerm)
                 } else if modell.feil == nil {
                     HeroView(visning: .laster, tittel: "Henter", undertekst: "Et øyeblikk")
@@ -64,6 +67,35 @@ struct NaaView: View {
         #endif
         }
         .refreshable { await modell.last() }
+        .sheet(item: Binding(get: { ark }, set: { if $0 == nil { modell.lukkSvar() } })) { data in
+            BekreftelseArk(
+                forespørsel: data.forespørsel, autentiserer: data.autentiserer,
+                onBekreft: { modell.bekreftSvar() }, onAvbryt: { modell.lukkSvar() }
+            )
+            .presentationDetents([.large])
+            .interactiveDismissDisabled(data.autentiserer)
+        }
+        .onChange(of: arkData, initial: true) { _, ny in ark = ny }
+        // Kvitteringen er en stille bekreftelse, ikke en tilstand: den går bort av seg selv.
+        .task(id: ferdigKortId) {
+            guard ferdigKortId != nil else { return }
+            try? await Task.sleep(for: .seconds(8))
+            if !Task.isCancelled, ferdigKortId != nil { modell.lukkSvar() }
+        }
+        #if DEBUG
+        // Synsløkken: `--auto-svar=godkjenn|avslaa` åpner bekreftelsen for første kort, `--auto-bekreft` trykker bekreft.
+        .task {
+            let args = ProcessInfo.processInfo.arguments
+            guard let valg = KildeValg.autoSvar(argumenter: args, tillatLive: true) else { return }
+            for _ in 0..<100 where modell.skjerm == nil { try? await Task.sleep(for: .milliseconds(50)) }
+            guard let g = modell.skjerm?.godkjenninger.first else { return }
+            modell.velg(valg == .godkjenn ? g.godkjenn : g.avslaa)
+            if KildeValg.brukerAutoBekreft(argumenter: args, tillatLive: true) {
+                try? await Task.sleep(for: .milliseconds(1500))
+                modell.bekreftSvar()
+            }
+        }
+        #endif
         #if DEBUG
         // Synsløkken: `--scroll-bunn` åpner nederst, så en lang skjerm kan fotograferes i to biter.
         .defaultScrollAnchor(ProcessInfo.processInfo.arguments.contains("--scroll-bunn") ? .bottom : .top)
@@ -124,8 +156,12 @@ struct NaaView: View {
             visning: s.tilstand == .rolig ? .rolig : .krever(s.antallKrever),
             tittel: s.heroTittel, undertekst: s.heroUndertekst
         )
+        svarRad
         ForEach(Array(s.godkjenninger.enumerated()), id: \.element.id) { i, g in
-            GodkjenningBrikke(godkjenning: g, onSvar: onSvar, idSuffiks: i == 0 ? "" : "-\(i + 1)")
+            GodkjenningBrikke(
+                godkjenning: g, onSvar: modell.svar == nil ? nil : { modell.velg($0) },
+                knapper: knapper(for: g), idSuffiks: i == 0 ? "" : "-\(i + 1)"
+            )
         }
         if !s.venter.isEmpty {
             Listebrikke(tittel: "Venter på deg", rader: s.venter, idPrefiks: "naaVenterListe")
@@ -158,6 +194,66 @@ struct NaaView: View {
             }
             .accessibilityIdentifier("naaNeste")
         }
+    }
+
+    // MARK: Godkjenn/Avslå
+
+    /// Hva knappene på et kort gjør nå: av mens noe annet pågår eller en usikkerhet ikke er kvittert; «Sender …» på kortet
+    /// som sendes. Én forsendelse om gangen, for alle kortene.
+    private func knapper(for g: NaaSkjerm.Godkjenning) -> GodkjenningBrikke.Knapper {
+        switch modell.svar?.tilstand {
+        case .sender(let f)? where f.forespørsel.kortId == g.id: .sender
+        case .sender?, .autentiserer?, .usikker?, .ferdig?: .av
+        default: .aktive
+        }
+    }
+
+    /// Raden over kortene: feil/usikkerhet som avviksrad, eller en stille kvittering.
+    @ViewBuilder private var svarRad: some View {
+        switch modell.svar?.tilstand {
+        case .usikker?:
+            SvarRad(
+                innhold: .avvik(Svar.usikkerVisning, oppdater: true, kreverNyttToken: false),
+                onOppdater: { Task { await modell.oppdaterEtterSvar() } }, onLukk: { modell.lukkSvar() }
+            )
+        case .feil(let f)?:
+            let oppdater: Bool = switch f {
+            case .alleredeAvgjort, .ukjentKort: true
+            default: false
+            }
+            SvarRad(
+                innhold: .avvik(f.visning, oppdater: oppdater, kreverNyttToken: f.kreverNyttToken),
+                onOppdater: { Task { await modell.oppdaterEtterSvar() } }, onLukk: { modell.lukkSvar() },
+                onKobleTilPaaNytt: onKobleTilPaaNytt
+            )
+        case .ferdig(let f)?:
+            SvarRad(
+                innhold: .kvittering(ord: f.valg.erAvslag ? "Avslått" : "Godkjent", tekst: f.forsteLinje),
+                onOppdater: {}, onLukk: { modell.lukkSvar() }
+            )
+        default:
+            EmptyView()
+        }
+    }
+
+    private var ferdigKortId: String? {
+        if case .ferdig(let f)? = modell.svar?.tilstand { return f.kortId }
+        return nil
+    }
+
+    /// Det bekreftelsen viser nå. `nil` utenfor `.bekrefter`/`.autentiserer`.
+    private var arkData: ArkData? {
+        switch modell.svar?.tilstand {
+        case .bekrefter(let f)?: ArkData(forespørsel: f, autentiserer: false)
+        case .autentiserer(let forsøk)?: ArkData(forespørsel: forsøk.forespørsel, autentiserer: true)
+        default: nil
+        }
+    }
+
+    struct ArkData: Identifiable, Equatable {
+        var forespørsel: Svar.Forespørsel
+        var autentiserer: Bool
+        var id: String { forespørsel.kortId }
     }
 
     private func feilBrikke(_ feil: NaaFeil) -> some View {

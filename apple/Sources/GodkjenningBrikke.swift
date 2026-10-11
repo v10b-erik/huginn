@@ -2,11 +2,21 @@ import SwiftUI
 import AppCore
 
 /// Godkjenningsbrikken: den ene tingen som krever en handling. Fylt flate = handling (Godkjenn); resten er tone.
-/// `onSvar == nil` deaktiverer begge knappene (live-modus har ingen skriveveier ennå): en høyrisikoknapp som
-/// halvveis virker er verre enn en som er av.
+/// `onSvar == nil` deaktiverer begge knappene (ingen skriveveier): en høyrisikoknapp som halvveis virker er verre enn
+/// en som er av. Et trykk åpner bare bekreftelsen; ingenting sendes fra brikken.
 struct GodkjenningBrikke: View {
+    /// Hva knappene gjør akkurat nå.
+    enum Knapper {
+        case aktive
+        /// Av, men synlige: noe annet pågår (en annen forsendelse, systemdialogen) eller en usikkerhet venter på kvittering.
+        case av
+        /// Dette kortets svar er ute. Knappene byttes mot en tonet «Sender …» (tone/kant = pågår, ingen spinner).
+        case sender
+    }
+
     var godkjenning: NaaSkjerm.Godkjenning
     var onSvar: ((NaaSkjerm.Handling) -> Void)?
+    var knapper: Knapper = .aktive
     var idSuffiks = ""
     @Environment(\.colorScheme) private var scheme
 
@@ -26,7 +36,10 @@ struct GodkjenningBrikke: View {
                         .accessibilityHidden(true)
                     }
                 }
-                Text(godkjenning.tittel).skrift(.h2).foregroundStyle(Color(p.tekst))
+                // Brikken viser målet (første linje, maks tre linjer); HELE teksten står i bekreftelsen, som alltid kommer
+                // før noe kan sendes.
+                Text(forsteLinjeEllerTittel).skrift(.h2).foregroundStyle(Color(p.tekst))
+                    .lineLimit(3)
                     .padding(.bottom, Theme.Avstand.s1)
                     .accessibilityAddTraits(.isHeader)
                 if let kilde = godkjenning.kilde {
@@ -36,26 +49,59 @@ struct GodkjenningBrikke: View {
                 if let klasse = godkjenning.klasse {
                     Band(etikett: "Klasse", verdi: klasse)
                 }
-                Proporsjonal(vekter: [3, 2], mellomrom: Theme.Avstand.s2) {
-                    Button { onSvar?(godkjenning.godkjenn) } label: {
-                        Text("Godkjenn").skrift(.knapp)
-                    }
-                    .buttonStyle(KnappStil(rolle: .handling))
-                    .accessibilityIdentifier("godkjennKnapp" + idSuffiks)
+                if knapper == .sender {
+                    sender(p)
+                        .padding(.top, Theme.Avstand.s3)
+                } else {
+                    Proporsjonal(vekter: [3, 2], mellomrom: Theme.Avstand.s2) {
+                        Button { onSvar?(godkjenning.godkjenn) } label: {
+                            Text("Godkjenn").skrift(.knapp)
+                        }
+                        .buttonStyle(KnappStil(rolle: .handling))
+                        .accessibilityLabel("Godkjenn: \(forsteLinje)")
+                        .accessibilityIdentifier("godkjennKnapp" + idSuffiks)
 
-                    Button { onSvar?(godkjenning.avslaa) } label: {
-                        Text("Avslå").skrift(.knapp)
+                        Button { onSvar?(godkjenning.avslaa) } label: {
+                            Text("Avslå").skrift(.knapp)
+                        }
+                        .buttonStyle(KnappStil(rolle: .sekundar))
+                        .accessibilityLabel("Avslå: \(forsteLinje)")
+                        .accessibilityIdentifier("avslaaKnapp" + idSuffiks)
                     }
-                    .buttonStyle(KnappStil(rolle: .sekundar))
-                    .accessibilityIdentifier("avslaaKnapp" + idSuffiks)
+                    .disabled(onSvar == nil || knapper == .av)
+                    .opacity(onSvar == nil || knapper == .av ? 0.45 : 1)
+                    .padding(.top, Theme.Avstand.s3)
                 }
-                .disabled(onSvar == nil)
-                .opacity(onSvar == nil ? 0.45 : 1)
-                .padding(.top, Theme.Avstand.s3)
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("naaKreverBrikke" + idSuffiks)
+    }
+}
+
+extension GodkjenningBrikke {
+    /// Kortets første linje, til VoiceOver (aldri token: brikken kjenner ikke tokenet).
+    fileprivate var forsteLinjeEllerTittel: String {
+        let l = NaaSkjerm.Godkjenning.forsteLinje(godkjenning.tittel)
+        return l.isEmpty ? godkjenning.tittel : l
+    }
+
+    fileprivate var forsteLinje: String {
+        let l = NaaSkjerm.Godkjenning.forsteLinje(godkjenning.tittel)
+        return l.isEmpty ? "godkjenning" : l
+    }
+
+    /// «Sender …»: pågår = tone og kant i aksent (regel 2), uten spinner og uten blinking. Ordet bærer tilstanden (regel 4).
+    fileprivate func sender(_ p: Theme.Palette) -> some View {
+        let form = RoundedRectangle(cornerRadius: Theme.Radius.knapp, style: .continuous)
+        return Text("Sender …").skrift(.knapp)
+            .foregroundStyle(Color(p.aksent))
+            .frame(maxWidth: .infinity, minHeight: Theme.Maal.knapp)
+            .background(form.fill(Color(p.aksentTone)))
+            .overlay(form.strokeBorder(Color(p.aksentKant), lineWidth: 1))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Sender svar: \(forsteLinje)")
+            .accessibilityIdentifier("godkjenn.sender" + idSuffiks)
     }
 }
 
