@@ -39,14 +39,32 @@ func isoDato(_ iso: String) -> Date {
         #expect(Tid.klokke(sekunder: -5) == "00:00:00")
     }
 
-    @Test func topplinjeHarUkedagOgKlokkeslett() {
-        #expect(Tid.topplinje(nå: nå, kalender: utcKalender()) == "Søndag · 15:52")
+    @Test func datolinjeHarUkedagOgDatoUtenKlokkeslett() {
+        #expect(Tid.datolinje(nå: nå, kalender: utcKalender()) == "Søndag 11. okt")
     }
 
-    @Test func topplinjeFølgerKalenderensTidssone() {
+    @Test func datolinjeFølgerKalenderensTidssone() {
         var oslo = utcKalender()
         oslo.timeZone = TimeZone(identifier: "Europe/Oslo")!
-        #expect(Tid.topplinje(nå: nå, kalender: oslo) == "Søndag · 17:52")  // CEST
+        #expect(Tid.datolinje(nå: isoDato("2026-10-11T23:30:00Z"), kalender: oslo) == "Mandag 12. okt")  // CEST: over midnatt
+        #expect(Tid.hhmm(nå, kalender: oslo) == "17:52")
+    }
+
+    @Test func ikkeGregorianskKalenderKanIkkeGåUtenforTabellene() {
+        // Den hebraiske kalenderen har 13 måneder og 7 ukedager med annen nummerering; vi bruker alltid gregoriansk.
+        var hebraisk = Calendar(identifier: .hebrew)
+        hebraisk.timeZone = TimeZone(identifier: "UTC")!
+        #expect(Tid.datolinje(nå: isoDato("2026-10-11T12:00:00Z"), kalender: hebraisk) == "Søndag 11. okt")
+        #expect(Tid.dagOgTid(isoDato("2027-03-30T08:30:00Z"), nå: nå, kalender: hebraisk) == "30. mar 08:30")
+    }
+
+    @Test func sidenViserDagBareNårDetIkkeErIDag() {
+        let k = utcKalender()
+        func s(_ iso: String) -> String { Tid.siden(isoDato(iso), nå: nå, kalender: k) }
+        #expect(s("2026-10-11T03:10:00Z") == "siden 03:10")
+        #expect(s("2026-10-10T22:00:00Z") == "siden i går 22:00")
+        #expect(s("2026-10-08T22:00:00Z") == "siden tor 22:00")
+        #expect(s("2026-10-01T22:00:00Z") == "siden 1. okt 22:00")
     }
 
     @Test func dagOgTidVelgerDagsuttrykk() {

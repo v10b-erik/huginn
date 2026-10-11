@@ -17,8 +17,8 @@ import Testing
 
     // MARK: - tilstand
 
-    @Test func kreverErKortPlussAvvikSomVenter() throws {
-        // naa.json: 2 ventende kort + 1 avvik med art «venter» + 1 tjenesteavvik som IKKE teller.
+    @Test func kreverErKortPlussUavhengigeAvvikSomVenter() throws {
+        // naa.json: 2 ventende kort + 1 «venter»-avvik som ikke er noen av kortene (tekst «Bygg klient») + 1 tjenesteavvik som IKKE teller.
         let s = NaaSkjerm(naa: try naa("naa.json"), traader: [], nå: nå, kalender: k)
         #expect(s.tilstand == .krever(3))
         #expect(s.antallKrever == 3)
@@ -52,6 +52,59 @@ import Testing
         #expect(s.venter.first?.ord == "VENTER")
     }
 
+    // MARK: - dobbelttelling (serveren sender hver godkjenning både som kort og som «venter»-avvik)
+
+    @Test func enGodkjenningTellesEnGangMedServerensEkteForm() throws {
+        let n = try naa("naa-server-form.json")
+        #expect(n.kort.count == 1 && n.avvik.count == 2)
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        // Kortet + «ko-xyz» (en annen sak), ikke «armere-alarmen» (kortets egen mission).
+        #expect(s.tilstand == .krever(2))
+        #expect(s.venter.map(\.tittel) == ["ko-xyz"])
+        #expect(s.heroUndertekst == "Godkjenning · 1 venter")
+    }
+
+    @Test func ÉnGodkjenningAleneGirKreverEn() {
+        let kort = NaaKort(id: "a1", describe: "Armere alarmen\nmer tekst", status: "pending")
+        let avvik = NaaAvvik(art: "venter", navn: "armere-alarmen", tekst: "Armere alarmen", ts: nå)
+        let s = NaaSkjerm(naa: Naa(kort: [kort], avvik: [avvik]), traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1))
+        #expect(s.venter.isEmpty)
+        #expect(s.heroUndertekst == "Godkjenning")
+    }
+
+    @Test func uavhengigVenterAvvikGirEnTilNårDetIkkeErEtKort() {
+        let avvik = NaaAvvik(art: "venter", navn: "ko-xyz", tekst: "Bygg klient")
+        let kort = NaaKort(id: "a1", describe: "Armere alarmen", status: "pending")
+        #expect(NaaSkjerm(naa: Naa(kort: [kort], avvik: [avvik]), traader: [], nå: nå, kalender: k).tilstand == .krever(2))
+        #expect(NaaSkjerm(naa: Naa(avvik: [avvik]), traader: [], nå: nå, kalender: k).tilstand == .krever(1))
+    }
+
+    @Test func approvalIdMatcherEksaktOgErAvgjørendeNårDenFinnes() {
+        let kort = NaaKort(id: "apv-1", describe: "Noe helt annet", status: "pending")
+        let treff = NaaAvvik(art: "venter", navn: "m1", tekst: "Armere alarmen", approvalId: "apv-1")
+        let bomMedLikTekst = NaaAvvik(art: "venter", navn: "m2", tekst: "Noe helt annet", approvalId: "apv-999")
+        func krever(_ a: NaaAvvik) -> NaaSkjerm.Tilstand {
+            NaaSkjerm(naa: Naa(kort: [kort], avvik: [a]), traader: [], nå: nå, kalender: k).tilstand
+        }
+        #expect(krever(treff) == .krever(1), "approvalId lik kortets id = samme sak, selv om teksten er ulik")
+        #expect(krever(bomMedLikTekst) == .krever(2), "med approvalId er den avgjørende: ulik id er en annen sak")
+    }
+
+    @Test func dekodingenTålerAtApprovalIdMangler() throws {
+        let uten = try TraadflataKlient.dekoder().decode(NaaAvvik.self, from: Data(#"{"art":"venter","navn":"a","tekst":"b"}"#.utf8))
+        #expect(uten.approvalId == nil)
+        let med = try TraadflataKlient.dekoder().decode(NaaAvvik.self, from: Data(#"{"art":"venter","navn":"a","tekst":"b","approvalId":"apv-1"}"#.utf8))
+        #expect(med.approvalId == "apv-1")
+    }
+
+    @Test func tallOverHundreGirFaktiskTallIUndertekstenMenHeroenStopperPå99() {
+        let kort = (0..<120).map { NaaKort(id: "k\($0)", status: "pending") }
+        let s = NaaSkjerm(naa: Naa(kort: kort), traader: [], nå: nå, kalender: k)
+        #expect(s.antallKrever == 120)
+        #expect(s.heroUndertekst == "120 saker · 120 godkjenninger")
+    }
+
     // MARK: - plattform
 
     @Test func plattformOkUtenTjenesteOgHjerteslagAvvik() {
@@ -80,10 +133,10 @@ import Testing
         #expect(s.heroUndertekst == "2 godkjenninger · 1 venter")
     }
 
-    @Test func enGodkjenningGirTidIUndertekst() {
+    @Test func enGodkjenningGirBareOrdetIUndertekst() {
         let kort = NaaKort(id: "x", describe: "Armere alarmen", status: "pending", createdAt: nå.addingTimeInterval(-192))
         let s = NaaSkjerm(naa: Naa(kort: [kort]), traader: [], nå: nå, kalender: k)
-        #expect(s.heroUndertekst == "Godkjenning · 3 min")
+        #expect(s.heroUndertekst == "Godkjenning", "ingen alder i undertekst: den fryser mellom hentinger")
         #expect(s.godkjenninger[0].godkjenn.key == "approve", "standardnøkkel når kortet ikke lister handlinger")
     }
 
@@ -110,7 +163,6 @@ import Testing
         let kol = s.kolonner[0]
         #expect(kol.tittel == "Avvik" && kol.verdi == 2 && kol.tone == .feil)
         #expect(kol.tekst == "siden 03:10")
-        #expect(kol.strek == nil)
     }
 
     @Test func ukjentAvvikstypeGirOrdetAvvik() {
@@ -118,9 +170,14 @@ import Testing
         #expect(NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k).avvik[0].ord == "AVVIK")
     }
 
+    @Test func sidenViserDagNårAvviketIkkeErFraIDag() {
+        let n = Naa(avvik: [NaaAvvik(art: "jobb", navn: "x", tekst: "t", ts: isoDato("2026-10-10T22:00:00Z"))])
+        #expect(NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k).kolonner[0].tekst == "siden i går 22:00")
+    }
+
     @Test func ingenAvvikGirDempetNullOgIngenStrek() throws {
         let kol = NaaSkjerm(naa: try naa("naa-minimal.json"), traader: [], nå: nå, kalender: k).kolonner[0]
-        #expect(kol.verdi == 0 && kol.tone == .dempet && kol.tekst == "ingen" && kol.strek == nil)
+        #expect(kol.verdi == 0 && kol.tone == .dempet && kol.tekst == "ingen")
     }
 
     // MARK: - tråder
@@ -131,11 +188,10 @@ import Testing
         let s = NaaSkjerm(naa: Naa(), traader: try traader(), nå: nåTråd, kalender: k)
         #expect(s.traader.map(\.tittel) == ["Bygg trådflataklient i AppCore"])
         #expect(s.traader[0].tid == "8 min")
+        #expect(s.traader[0].ord == "PÅGÅR", "tilstanden står som ord, ikke bare som lampe")
         #expect(s.traader[0].tone == .aksent, "status working = noe pågår")
         let kol = s.kolonner[1]
         #expect(kol.tittel == "Tråder" && kol.verdi == 1)
-        // 2 ikke-arkiverte tråder, ingen venter.
-        #expect(kol.strek == 0)
         #expect(kol.tekst == "ingen venter")
     }
 
@@ -154,20 +210,36 @@ import Testing
         #expect(s.traader[0].tid == "1 t")
     }
 
-    @Test func traadSomKortetPekerPåVenterOgStreketErAndelAvAlle() {
+    @Test func traadVenterNårKortetsThreadKeyErEnAvTelegramNøklene() {
         let hold = TraadHolder(type: .plattform, status: "idle", aktiv: true)
-        let a = Traad(id: "T1", tittel: "a", sistAktiv: nå.addingTimeInterval(-60), holder: hold)
-        let b = Traad(id: "T2", tittel: "b", sistAktiv: nå.addingTimeInterval(-120), holder: hold)
-        let c = Traad(id: "T3", tittel: "c", sistAktiv: nå.addingTimeInterval(-9000))  // parkert, men teller blant alle
-        let kort = NaaKort(id: "k", status: "pending", threadKey: "T2")
+        let a = Traad(id: "S1", tittel: "a", sistAktiv: nå.addingTimeInterval(-60), holder: hold)
+        let b = Traad(id: "S2", tittel: "b", sistAktiv: nå.addingTimeInterval(-120), holder: hold,
+                      live: TraadLive(opptatt: false, telegram: ["tg:-100123:6", "tg:-100123:7"]))
+        let c = Traad(id: "S3", tittel: "c", sistAktiv: nå.addingTimeInterval(-9000))  // parkert
+        let kort = NaaKort(id: "k", status: "pending", threadKey: "tg:-100123:7")
         let s = NaaSkjerm(naa: Naa(kort: [kort]), traader: [a, b, c], nå: nå, kalender: k)
+        #expect(s.traader.map(\.tittel) == ["a", "b"])
         #expect(s.traader.map(\.ord) == [nil, "VENTER"])
         #expect(s.traader[1].tid == nil)
         #expect(s.traader[1].tone == .aksent)
-        let kol = s.kolonner[1]
-        #expect(kol.verdi == 2)
-        #expect(kol.tekst == "1 venter")
-        #expect(abs((kol.strek ?? -1) - 1.0 / 3.0) < 1e-9)
+        #expect(s.kolonner[1].verdi == 2)
+        #expect(s.kolonner[1].tekst == "1 venter")
+    }
+
+    @Test func traadVenterNårKortetsThreadKeyErKodeOppgavensNøkkel() {
+        let t = Traad(id: "S1", tittel: "kode", sistAktiv: nå, holder: TraadHolder(type: .plattform, status: "idle", aktiv: true),
+                      kode: TraadKode(produkt: "huginn", oppgave: TraadOppgave(threadKey: "mission:ko-abc")))
+        let kort = NaaKort(id: "k", status: "pending", threadKey: "mission:ko-abc")
+        #expect(NaaSkjerm(naa: Naa(kort: [kort]), traader: [t], nå: nå, kalender: k).traader[0].ord == "VENTER")
+    }
+
+    @Test func threadKeyLikTraadensIdGirIkkeVenter() {
+        // Trådens id er en sesjons-id og er aldri en threadKey; en tilfeldig likhet skal ikke telle.
+        let t = Traad(id: "tg:-100123:7", tittel: "x", sistAktiv: nå, holder: TraadHolder(type: .plattform, status: "idle", aktiv: true))
+        let kort = NaaKort(id: "k", status: "pending", threadKey: "tg:-100123:7")
+        let s = NaaSkjerm(naa: Naa(kort: [kort]), traader: [t], nå: nå, kalender: k)
+        #expect(s.traader[0].ord == nil)
+        #expect(s.kolonner[1].tekst == "ingen venter")
     }
 
     @Test func blokkertHarnessStatusGirVenter() {
@@ -178,7 +250,7 @@ import Testing
     @Test func arkivertTraadErAldriMed() {
         let t = Traad(id: "a", tittel: "x", sistAktiv: nå, holder: TraadHolder(type: .terminal, status: "working", aktiv: true), arkivert: nå)
         let s = NaaSkjerm(naa: Naa(), traader: [t], nå: nå, kalender: k)
-        #expect(s.traader.isEmpty && s.kolonner[1].verdi == 0 && s.kolonner[1].strek == 0)
+        #expect(s.traader.isEmpty && s.kolonner[1].verdi == 0)
     }
 
     @Test func traaderSorteresNyesteFørstOgKappesVedMaks() {
@@ -222,7 +294,6 @@ import Testing
         #expect(kol.tittel == "I dag")
         #expect(kol.verdi == 1, "bare «Ring banken» ligger på 11. oktober")
         #expect(kol.tekst == "neste 22:00")
-        #expect(kol.strek == nil)
     }
 
     @Test func idagKolonneTomOgFerdig() {

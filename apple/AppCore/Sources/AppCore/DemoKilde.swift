@@ -45,7 +45,11 @@ public struct DemoKilde: NaaKilde {
         let standup = treffer(8, 30, etter: nå, ukedag: 2)  // mandag
         let avvik: [NaaAvvik] = variant == .rolig ? [] : [
             NaaAvvik(art: "jobb", navn: "hermod-backup", tekst: "siste kjøring 03:10",
-                     ts: treffer(3, 10, etter: nå.addingTimeInterval(-86_400)), lenke: nil)
+                     ts: treffer(3, 10, etter: nå.addingTimeInterval(-86_400)), lenke: nil),
+            // Serveren sender også godkjenningen som «venter»-avvik (mission-feed.ts), med målet som tekst.
+            // Den er samme sak som kortet og skal ikke telles to ganger.
+            NaaAvvik(art: "venter", navn: "armere-alarmen", tekst: "Armere alarmen",
+                     ts: nå.addingTimeInterval(-(3 * min + 12)), lenke: nil),
         ]
         let kort: [NaaKort] = variant == .rolig ? [] : [
             NaaKort(id: "demo-alarm", name: "alarm", describe: "Armere alarmen", status: "pending",
@@ -58,14 +62,15 @@ public struct DemoKilde: NaaKilde {
             kalender: [NaaKalenderHendelse(tittel: "Trening", kalender: nil, ts: trening, heleDagen: false),
                        NaaKalenderHendelse(tittel: "Standup", kalender: nil, ts: standup, heleDagen: false)]
         )
-        let ajaxId = variant == .rolig ? "demo-ajax-fix" : "kode:v10b:ajax-fix"
         let traader = [
             Traad(id: "demo-huginn", tittel: "kode:huginn", sistAktiv: nå.addingTimeInterval(-8 * min),
                   holder: TraadHolder(type: .plattform, status: "working", aktiv: true)),
             Traad(id: "demo-cto", tittel: "cto", sistAktiv: nå.addingTimeInterval(-60 * min),
                   holder: TraadHolder(type: .plattform, status: "idle", aktiv: true)),
-            Traad(id: ajaxId, tittel: "kode:v10b:ajax-fix", sistAktiv: nå.addingTimeInterval(-125 * min),
-                  holder: TraadHolder(type: .plattform, status: "idle", aktiv: true)),
+            // Kortet peker på tråden gjennom Telegram-nøkkelen (`live.telegram`), ikke gjennom tråd-id-en.
+            Traad(id: "demo-ajax-fix", tittel: "kode:v10b:ajax-fix", sistAktiv: nå.addingTimeInterval(-125 * min),
+                  holder: TraadHolder(type: .plattform, status: "idle", aktiv: true),
+                  live: TraadLive(opptatt: false, telegram: ["kode:v10b:ajax-fix"])),
         ]
         return (naa, traader)
     }

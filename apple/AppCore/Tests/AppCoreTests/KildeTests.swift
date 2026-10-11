@@ -9,11 +9,11 @@ import Testing
 
     @Test func demoAvvikErDagenFraPrototypen() {
         let s = DemoKilde(variant: .avvik, kalender: k).skjerm(nå: nå)
-        #expect(s.topplinje == "Søndag · 15:52")
+        #expect(s.topplinje == "Søndag 11. okt")
         #expect(s.tilstand == .krever(1))
         #expect(s.plattformOk)
         #expect(s.heroTittel == "Krever deg")
-        #expect(s.heroUndertekst == "Godkjenning · 3 min")
+        #expect(s.heroUndertekst == "Godkjenning")
 
         let g = s.godkjenninger[0]
         #expect(g.tittel == "Armere alarmen")
@@ -22,6 +22,7 @@ import Testing
         #expect(g.klasse == "Høyrisiko")
         #expect(g.opprettet == nå.addingTimeInterval(-192))
 
+        #expect(s.venter.isEmpty, "godkjenningen står også som «venter»-avvik, men er samme sak som kortet")
         #expect(s.avvik.map(\.tittel) == ["hermod-backup"])
         #expect(s.avvik[0].undertekst == "siste kjøring 03:10")
         #expect(s.kolonner[0].verdi == 1)
@@ -29,11 +30,10 @@ import Testing
 
         #expect(s.traader.map(\.tittel) == ["kode:huginn", "cto", "kode:v10b:ajax-fix"])
         #expect(s.traader.map(\.tid) == ["8 min", "1 t", nil])
-        #expect(s.traader.map(\.ord) == [nil, nil, "VENTER"])
+        #expect(s.traader.map(\.ord) == ["PÅGÅR", nil, "VENTER"])
         #expect(s.kolonner[1].verdi == 3)
         #expect(s.kolonner[1].tekst == "1 venter")
-        #expect(abs((s.kolonner[1].strek ?? 0) - 1.0 / 3.0) < 1e-9)
-
+        
         #expect(s.neste.map(\.tittel) == ["Trening", "Standup"])
         #expect(s.neste.map(\.tid) == ["I dag 18:00", "I morgen 08:30"])
     }
@@ -46,8 +46,7 @@ import Testing
         #expect(s.godkjenninger.isEmpty && s.avvik.isEmpty && s.venter.isEmpty)
         #expect(s.kolonner.map(\.verdi) == [0, 3, 1])
         #expect(s.kolonner[1].tekst == "ingen venter")
-        #expect(s.kolonner[1].strek == 0)
-        #expect(s.traader.allSatisfy { $0.ord == nil })
+        #expect(s.traader.map(\.ord) == ["PÅGÅR", nil, nil], "ingen venter, bare huginn pågår")
     }
 
     @Test func demoNesteErAldriHistorisk() {
@@ -61,7 +60,7 @@ import Testing
     @Test func demoHentBrukerInjisertKlokke() async throws {
         let kilde = DemoKilde(variant: .rolig, nå: { isoDato("2026-10-11T08:00:00Z") }, kalender: k)
         let s = try await kilde.hent()
-        #expect(s.topplinje == "Søndag · 08:00")
+        #expect(s.topplinje == "Søndag 11. okt")
     }
 
     @Test func liveKildeByggerSkjermFraTrådflata() async throws {
@@ -85,6 +84,25 @@ import Testing
         await #expect(throws: TraadflataFeil.ikkeInnlogget) {
             try await LiveKilde(klient: klient, kalender: k).hent()
         }
+    }
+
+    @Test func klientOgLiveKildeLekkerAldriTokenet() {
+        let klient = TraadflataKlient(baseURL: URL(string: "https://ygg.example")!, token: "tok-hemmelig-123")
+        let live = LiveKilde(klient: klient)
+        for v in [klient as Any, live as Any] {
+            var dumpet = ""
+            dump(v, to: &dumpet)
+            for tekst in ["\(v)", String(reflecting: v), dumpet] {
+                #expect(!tekst.contains("hemmelig"), "tokenet lekket i: \(tekst)")
+            }
+        }
+        #expect(klient.description == "TraadflataKlient(ygg.example)")
+    }
+
+    @Test func kildeValgLekkerIkkeVedDump() {
+        var dumpet = ""
+        dump(KildeValg.live(url: URL(string: "https://x.example")!, token: "tok-hemmelig-123"), to: &dumpet)
+        #expect(!dumpet.contains("hemmelig"))
     }
 
     @Test func feilVisesSomAvviksraderUtenInnholdEllerToken() {

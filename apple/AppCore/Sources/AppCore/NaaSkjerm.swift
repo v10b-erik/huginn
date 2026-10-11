@@ -70,8 +70,6 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var id: String
         public var tittel: String
         public var verdi: Int
-        /// 0…1. `nil` = ingen strek: den tegnes bare der den betyr noe.
-        public var strek: Double?
         public var tone: Tone
         public var tekst: String
     }
@@ -108,12 +106,24 @@ public struct NaaSkjerm: Sendable, Equatable {
     }
 
     public init(naa: Naa, traader: [Traad], nå: Date, kalender: Calendar = .current) {
-        topplinje = Tid.topplinje(nå: nå, kalender: kalender)
+        let kalender = Tid.gregoriansk(kalender)
+        topplinje = Tid.datolinje(nå: nå, kalender: kalender)
 
         // krever = kort som venter (status pending; manglende status regnes som pending, siden
-        // `lagNaa()` bare sender ventende) + avvik med art «venter».
+        // `lagNaa()` bare sender ventende) + avvik med art «venter» som IKKE er samme sak som et kort.
+        //
+        // Serveren lager en mission for HVER frittstående godkjenning (mission-feed.ts `upsertFromApproval`),
+        // og `lagNaa` sender den som avvik med art «venter»: samme sak står i både `kort` og `avvik`.
+        // Et «venter»-avvik regnes som kortets dobbeltgjenger når (1) `approvalId` er lik kortets id, eller,
+        // når avviket ikke bærer `approvalId` (serveren sender den ikke ennå), (2) `avvik.tekst` er lik første
+        // linje av kortets `describe` (serverens `goal = firstLine(describe)`).
+        //
+        // KJENT HULL: en godkjenning som er et steg i en LØPENDE mission (kortets `threadKey` = `mission:…`)
+        // blir missionens ventepunkt, og missionens `goal` er oppgavens mål, ikke kortets tekst. Den kan ikke
+        // matches ennå og telles dobbelt til serveren sender `approvalId`.
         let ventendeKort = naa.kort.filter { $0.status == nil || $0.status == "pending" }
         let ventendeAvvik = naa.avvik.filter { $0.art == "venter" }
+            .filter { a in !ventendeKort.contains { Self.samsvarer(avvik: a, kort: $0) } }
         let krever = ventendeKort.count + ventendeAvvik.count
         tilstand = krever > 0 ? .krever(krever) : .rolig
 
@@ -121,7 +131,7 @@ public struct NaaSkjerm: Sendable, Equatable {
         plattformOk = !naa.avvik.contains { $0.art == "tjeneste" || $0.art == "hjerteslag" }
 
         heroTittel = krever > 0 ? "Krever deg" : "Alt rolig"
-        heroUndertekst = Self.heroUndertekst(kort: ventendeKort, venter: ventendeAvvik.count, nå: nå)
+        heroUndertekst = Self.heroUndertekst(kort: ventendeKort.count, venter: ventendeAvvik.count)
 
         godkjenninger = ventendeKort.map { kort in
             func nøkkel(_ ønsket: String) -> String {
@@ -163,7 +173,7 @@ public struct NaaSkjerm: Sendable, Equatable {
         neste = Self.nesteBand(naa, nå: nå, kalender: kalender)
 
         kolonner = [
-            Self.avvikKolonne(avvikene, kalender: kalender),
+            Self.avvikKolonne(avvikene, nå: nå, kalender: kalender),
             Self.traadKolonne(tråder),
             Self.idagKolonne(naa, nå: nå, kalender: kalender),
         ]
@@ -191,18 +201,29 @@ public struct NaaSkjerm: Sendable, Equatable {
 
     // MARK: - Hero
 
-    private static func heroUndertekst(kort: [NaaKort], venter: Int, nå: Date) -> String {
-        if kort.isEmpty && venter == 0 { return "Ingenting venter på deg" }
+    /// Bevisst uten alder: undertekstene fryser mellom hentinger. Brikkens egen teller viser alderen levende.
+    /// Heroens LCD stopper på 99; teksten sier alltid det faktiske tallet.
+    private static func heroUndertekst(kort: Int, venter: Int) -> String {
+        if kort == 0 && venter == 0 { return "Ingenting venter på deg" }
         var deler: [String] = []
-        if kort.count == 1 {
-            var s = "Godkjenning"
-            if let opprettet = kort[0].createdAt { s += " · \(Tid.relativ(fra: opprettet, til: nå))" }
-            deler.append(s)
-        } else if kort.count > 1 {
-            deler.append("\(kort.count) godkjenninger")
+        if kort + venter > 99 { deler.append("\(kort + venter) saker") }
+        if kort == 1 {
+            deler.append("Godkjenning")
+        } else if kort > 1 {
+            deler.append("\(kort) godkjenninger")
         }
         if venter > 0 { deler.append("\(venter) venter") }
         return deler.joined(separator: " · ")
+    }
+
+    private static func firstLine(_ tekst: String) -> String {
+        tekst.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? tekst
+    }
+
+    private static func samsvarer(avvik: NaaAvvik, kort: NaaKort) -> Bool {
+        if let id = avvik.approvalId { return id == kort.id }
+        guard let describe = kort.describe else { return false }
+        return avvik.tekst == firstLine(describe)
     }
 
     // MARK: - Tråder
@@ -210,21 +231,25 @@ public struct NaaSkjerm: Sendable, Equatable {
     private struct Traadutvalg {
         var rader: [Rad]
         var venter: Int
-        var alle: Int
     }
 
     /// «I gang» = holderen er aktiv, eller tråden er opptatt akkurat nå (`live.opptatt`), eller den
     /// venter på deg. Parkerte og arkiverte tråder hører ikke hjemme på «Nå».
     ///
-    /// «Venter» = tråden står stille på en avgjørelse fra deg: et ventende kort peker på den
-    /// (`threadKey == id`), eller harnessen melder selv at den er blokkert (`holder.status == "blocked"`).
-    /// Raden viser LED-tone aksent når noe faktisk pågår (status «working», eller opptatt) og dempet
-    /// når holderen bare står åpen (f.eks. «idle»).
+    /// «Venter» = tråden står stille på en avgjørelse fra deg: et ventende korts `threadKey` er en av trådens
+    /// Telegram-nøkler (`live.telegram`) eller lik oppgavenøkkelen til en kode-tråd (`kode.oppgave.threadKey`),
+    /// eller harnessen melder selv at den er blokkert. `blocked` er en av herdr-statusene
+    /// `idle | working | blocked` (verdandi.ts, `Holder.status`; en blokkert agent regnes som aktiv der).
+    /// Trådens egen `id` er en Claude Code-sesjons-id og sammenlignes ALDRI mot en `threadKey`.
+    ///
+    /// Raden viser ordet PÅGÅR (og aksent) når noe faktisk pågår (status «working», eller opptatt), ellers
+    /// bare tiden i dempet når holderen står åpen («idle»): tilstanden er alltid et ord, ikke bare en lampe.
     private static func traadRader(_ alle: [Traad], kort: [NaaKort], nå: Date) -> Traadutvalg {
         let ikkeArkivert = alle.filter { $0.arkivert == nil }
         let kortNøkler = Set(kort.compactMap(\.threadKey))
         func venter(_ t: Traad) -> Bool {
-            kortNøkler.contains(t.id) || t.holder?.status?.lowercased() == "blocked"
+            let nøkler = Set((t.live?.telegram ?? []) + [t.kode?.oppgave?.threadKey].compactMap { $0 })
+            return !kortNøkler.isDisjoint(with: nøkler) || t.holder?.status?.lowercased() == "blocked"
         }
         func iGang(_ t: Traad) -> Bool {
             t.holder?.aktiv == true || t.live?.opptatt == true || venter(t)
@@ -236,34 +261,32 @@ public struct NaaSkjerm: Sendable, Equatable {
             }
             let pågår = t.live?.opptatt == true || t.holder?.status?.lowercased() == "working"
             return Rad(
-                id: t.id, tittel: t.tittel, undertekst: nil, ord: nil,
+                id: t.id, tittel: t.tittel, undertekst: nil, ord: pågår ? "PÅGÅR" : nil,
                 tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: pågår ? .aksent : .dempet
             )
         }
-        return Traadutvalg(rader: rader, venter: valgt.filter(venter).count, alle: ikkeArkivert.count)
+        return Traadutvalg(rader: rader, venter: valgt.filter(venter).count)
     }
 
     // MARK: - Kolonner
 
-    private static func avvikKolonne(_ avvik: [NaaAvvik], kalender: Calendar) -> Kolonne {
+    private static func avvikKolonne(_ avvik: [NaaAvvik], nå: Date, kalender: Calendar) -> Kolonne {
         let tekst: String
         if avvik.isEmpty {
             tekst = "ingen"
         } else if let tidligst = avvik.compactMap(\.ts).min() {
-            tekst = "siden \(Tid.hhmm(tidligst, kalender: kalender))"
+            tekst = Tid.siden(tidligst, nå: nå, kalender: kalender)
         } else {
             tekst = avvik.count == 1 ? "se under" : "se listen"
         }
-        // Ingen strek: en full rød strek ved «minst ett avvik» sier det tallet allerede sier.
-        return Kolonne(id: "avvik", tittel: "Avvik", verdi: avvik.count, strek: nil,
+        return Kolonne(id: "avvik", tittel: "Avvik", verdi: avvik.count,
                        tone: avvik.isEmpty ? .dempet : .feil, tekst: tekst)
     }
 
-    /// Tallet er tråder i gang; streken er andelen av ALLE (ikke-arkiverte) tråder som venter på deg.
+    /// Tallet er tråder i gang; teksten sier hvor mange av dem som venter på deg. Ingen strek.
     private static func traadKolonne(_ t: Traadutvalg) -> Kolonne {
         Kolonne(
             id: "traader", tittel: "Tråder", verdi: t.rader.count,
-            strek: t.alle > 0 ? Double(t.venter) / Double(t.alle) : 0,
             tone: .dempet, tekst: t.venter > 0 ? "\(t.venter) venter" : "ingen venter"
         )
     }
@@ -282,7 +305,7 @@ public struct NaaSkjerm: Sendable, Equatable {
         } else {
             tekst = "ferdig i dag"
         }
-        return Kolonne(id: "idag", tittel: "I dag", verdi: idag.count, strek: nil, tone: .dempet, tekst: tekst)
+        return Kolonne(id: "idag", tittel: "I dag", verdi: idag.count, tone: .dempet, tekst: tekst)
     }
 
     // MARK: - Neste

@@ -62,9 +62,40 @@ extension TraadHolder {
 public struct TraadLive: Codable, Sendable, Equatable {
     /// Tråden har en tur i gang akkurat nå.
     public var opptatt: Bool?
+    /// Telegram-trådnøklene som peker på denne tråden (`live.telegram` i verdandi.ts). Det er DEN
+    /// nøkkelen et kort bærer som `threadKey`, ikke trådens egen id.
+    public var telegram: [String]?
 
-    public init(opptatt: Bool? = nil) {
+    public init(opptatt: Bool? = nil, telegram: [String]? = nil) {
         self.opptatt = opptatt
+        self.telegram = telegram
+    }
+}
+
+/// Oppgaven en kode-tråd er bundet til (`kode.oppgave` i verdandi.ts). Bare nøkkelen brukes.
+public struct TraadOppgave: Codable, Sendable, Equatable {
+    public var id: String?
+    public var tekst: String?
+    /// Nøkkelen kort fra denne oppgaven bærer som `threadKey` (typisk `mission:…`).
+    public var threadKey: String?
+
+    public init(id: String? = nil, tekst: String? = nil, threadKey: String? = nil) {
+        self.id = id
+        self.tekst = tekst
+        self.threadKey = threadKey
+    }
+}
+
+/// Tråden står i et produktrepo (`kode` i verdandi.ts). Alt valgfritt: bare det appen leser er med.
+public struct TraadKode: Codable, Sendable, Equatable {
+    public var produkt: String?
+    public var gren: String?
+    public var oppgave: TraadOppgave?
+
+    public init(produkt: String? = nil, gren: String? = nil, oppgave: TraadOppgave? = nil) {
+        self.produkt = produkt
+        self.gren = gren
+        self.oppgave = oppgave
     }
 }
 
@@ -99,6 +130,7 @@ public struct Traad: Codable, Sendable, Equatable, Identifiable {
     public var sistAktiv: Date
     public var holder: TraadHolder?
     public var live: TraadLive?
+    public var kode: TraadKode?
     public var prosjekt: TraadProsjekt?
     public var arkivert: Date?
     /// Uleverte meldinger i kø til tråden.
@@ -112,20 +144,22 @@ public struct Traad: Codable, Sendable, Equatable, Identifiable {
 
     public init(
         id: String, tittel: String, sistAktiv: Date, holder: TraadHolder? = nil,
-        prosjekt: TraadProsjekt? = nil, arkivert: Date? = nil, ko: Int? = nil, live: TraadLive? = nil
+        prosjekt: TraadProsjekt? = nil, arkivert: Date? = nil, ko: Int? = nil, live: TraadLive? = nil,
+        kode: TraadKode? = nil
     ) {
         self.id = id
         self.tittel = tittel
         self.sistAktiv = sistAktiv
         self.holder = holder
         self.live = live
+        self.kode = kode
         self.prosjekt = prosjekt
         self.arkivert = arkivert
         self.ko = ko
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, tittel, sistAktiv, holder, live, prosjekt, arkivert, ko
+        case id, tittel, sistAktiv, holder, live, kode, prosjekt, arkivert, ko
     }
 }
 
@@ -154,6 +188,9 @@ public struct NaaAvvik: Codable, Sendable, Equatable, Identifiable {
     public var tekst: String
     public var ts: Date?
     public var lenke: String?
+    /// Godkjenningen avviket gjelder (art «venter»). Serveren sender det ikke ennå; vi foreslår feltet,
+    /// så dekodingen tåler både at det mangler og at det finnes.
+    public var approvalId: String?
 
     public var id: String { "\(art):\(navn)" }
 }

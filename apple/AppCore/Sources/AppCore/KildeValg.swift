@@ -2,7 +2,7 @@ import Foundation
 
 /// Hvilken kilde «Nå» skal bruke. Ren logikk, så regelen testes uten app: demo er standard, og live
 /// kan bare velges der kallestedet uttrykkelig tillater det (DEBUG-bygg). Ingen Keychain, ingen innlogging ennå.
-public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     case demo(rolig: Bool)
     case live(url: URL, token: String)
 
@@ -31,6 +31,7 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     /// Redigert: tokenet skal aldri havne i en logg.
     public var description: String { navn }
     public var debugDescription: String { navn }
+    public var customMirror: Mirror { Mirror(self, children: ["kilde": navn]) }
 
     public var erDemo: Bool {
         if case .demo = self { return true }

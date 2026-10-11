@@ -17,7 +17,7 @@ public enum TraadflataFeil: Error, Sendable, Equatable {
 
 /// Async klient mot trådflata (yggdrasil/core/traadflata.ts). Autentiserer med
 /// `Authorization: Bearer <enhetstoken>`; flata bruker samme token som cookie i nettleseren.
-public struct TraadflataKlient: Sendable {
+public struct TraadflataKlient: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let baseURL: URL
     private let token: String
     private let session: URLSession
@@ -27,6 +27,11 @@ public struct TraadflataKlient: Sendable {
         self.token = token
         self.session = session
     }
+
+    /// Tokenet skal aldri havne i en logg, en feilmelding eller en `dump`.
+    public var description: String { "TraadflataKlient(\(baseURL.host ?? "?"))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["baseURL": baseURL]) }
 
     /// GET /api/naa
     public func hentNaa() async throws -> Naa {

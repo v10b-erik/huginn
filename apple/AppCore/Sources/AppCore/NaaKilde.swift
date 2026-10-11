@@ -6,7 +6,7 @@ public protocol NaaKilde: Sendable {
 }
 
 /// Ekte data fra trådflata: `/api/naa` og `/api/traader` (begge med enhetstoken i klienten).
-public struct LiveKilde: NaaKilde {
+public struct LiveKilde: NaaKilde, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     private let klient: TraadflataKlient
     private let nå: @Sendable () -> Date
     private let kalender: Calendar
@@ -16,6 +16,10 @@ public struct LiveKilde: NaaKilde {
         self.nå = nå
         self.kalender = kalender
     }
+
+    public var description: String { "LiveKilde(\(klient.baseURL.host ?? "?"))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["baseURL": klient.baseURL]) }
 
     public func hent() async throws -> NaaSkjerm {
         async let naa = klient.hentNaa()
