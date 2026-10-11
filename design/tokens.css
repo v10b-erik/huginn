@@ -40,6 +40,7 @@
   --farge-ok: #6FCFA2;
   /* Flaten tekstrollene måles mot (brikken over bunnen). Testen i AppCore krever >= 4,5. */
   --farge-kontrastflate: #11172A;
+  --farge-kontrastflate-band: #151925;
 
   /* --- Typografi (CSS-flater; Swift speiler det som Theme.Typografi) */
   --font-visning: "Archivo", system-ui, sans-serif;
@@ -112,7 +113,7 @@
   --farge-kant: rgba(40, 52, 110, 0.09);
   --farge-kant-lys: rgba(255, 255, 255, 0.9);
   --farge-spor: rgba(40, 52, 110, 0.10);
-  --farge-band: rgba(40, 52, 110, 0.05);
+  --farge-band: #EBEEF4;
   --farge-tekst: #1B2140;
   --farge-dempet: #5B6580;
   --farge-svak: #8A93AB;
@@ -128,6 +129,7 @@
   --farge-feil: #BD3D46;
   --farge-ok: #167A4E;
   --farge-kontrastflate: #EBEEF4;
+  --farge-kontrastflate-band: #EBEEF4;
 }
 
 @media (prefers-color-scheme: light) {
@@ -140,7 +142,7 @@
     --farge-kant: rgba(40, 52, 110, 0.09);
     --farge-kant-lys: rgba(255, 255, 255, 0.9);
     --farge-spor: rgba(40, 52, 110, 0.10);
-    --farge-band: rgba(40, 52, 110, 0.05);
+    --farge-band: #EBEEF4;
     --farge-tekst: #1B2140;
     --farge-dempet: #5B6580;
     --farge-svak: #8A93AB;
@@ -156,5 +158,6 @@
     --farge-feil: #BD3D46;
     --farge-ok: #167A4E;
     --farge-kontrastflate: #EBEEF4;
+    --farge-kontrastflate-band: #EBEEF4;
   }
 }

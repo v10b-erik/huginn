@@ -32,6 +32,21 @@ import Testing
         }
     }
 
+    /// Båndene (FRA/KLASSE/RENT i godkjenningsbrikken, feltene på «Koble til», adressen i arket) ligger på en annen,
+    /// mørkere flate enn glasset. `kontrastflateBand` er den EFFEKTIVE flaten bak tekst i et bånd, målt fra
+    /// simulatorbilder. Uten denne målte testen bare mot glasset, og tre roller feilet stille i lys modus.
+    @Test func tekstrollerHolderWCAGMotBåndflaten() {
+        for (navn, p) in moduser {
+            let tekstroller: [(String, Theme.RGBA)] = [
+                ("tekst", p.tekst), ("dempet", p.dempet), ("aksent", p.aksent), ("feil", p.feil), ("ok", p.ok),
+            ]
+            for (rolle, farge) in tekstroller {
+                let k = kontrast(farge, p.kontrastflateBand)
+                #expect(k >= 4.5, "\(navn): \(rolle) har kontrast \(k) mot båndflaten, trenger ≥ 4,5")
+            }
+        }
+    }
+
     @Test func hvitTekstPåAksentfyllHolderWCAG() {
         for (navn, p) in moduser {
             for (rolle, fyll) in [("fyll-1", p.aksentFyll1), ("fyll-2", p.aksentFyll2)] {
