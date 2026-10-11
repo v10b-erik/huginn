@@ -125,9 +125,9 @@
   --farge-krever-2: rgba(80, 98, 207, 0.04);
   --farge-skygge: rgba(40, 52, 110, 0.22);
   --farge-pa-aksent: #FFFFFF;
-  --farge-feil: #C9414A;
-  --farge-ok: #177F52;
-  --farge-kontrastflate: #F9FAFD;
+  --farge-feil: #BD3D46;
+  --farge-ok: #167A4E;
+  --farge-kontrastflate: #EBEEF4;
 }
 
 @media (prefers-color-scheme: light) {
@@ -153,8 +153,8 @@
     --farge-krever-2: rgba(80, 98, 207, 0.04);
     --farge-skygge: rgba(40, 52, 110, 0.22);
     --farge-pa-aksent: #FFFFFF;
-    --farge-feil: #C9414A;
-    --farge-ok: #177F52;
-    --farge-kontrastflate: #F9FAFD;
+    --farge-feil: #BD3D46;
+    --farge-ok: #167A4E;
+    --farge-kontrastflate: #EBEEF4;
   }
 }

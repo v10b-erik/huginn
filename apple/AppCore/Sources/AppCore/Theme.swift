@@ -91,9 +91,9 @@ public enum Theme {
         krever2: RGBA(0.3137, 0.3843, 0.8118, 0.04),
         skygge: RGBA(0.1569, 0.2039, 0.4314, 0.22),
         paAksent: RGBA(1.0, 1.0, 1.0),
-        feil: RGBA(0.7882, 0.2549, 0.2902),
-        ok: RGBA(0.0902, 0.498, 0.3216),
-        kontrastflate: RGBA(0.9765, 0.9804, 0.9922)
+        feil: RGBA(0.7412, 0.2392, 0.2745),
+        ok: RGBA(0.0863, 0.4784, 0.3059),
+        kontrastflate: RGBA(0.9216, 0.9333, 0.9569)
     )
 
     /// Avstandsskala (pt), 4-basert.
