@@ -31,6 +31,9 @@ targets:
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Navnet på hjemskjermen er «Basic» (repo og produkt heter huginn; design-arbeidsflate §9). Bundle-ID og
+        # PRODUCT_NAME er uendret, så provisjonering og eksisterende bygg ikke påvirkes.
+        INFOPLIST_KEY_CFBundleDisplayName: "Basic"
         # Godkjenn spør etter Face ID (LocalAuthentication); uten teksten feiler biometri på enhet.
         INFOPLIST_KEY_NSFaceIDUsageDescription: "Huginn bekrefter med Face ID at det er deg som godkjenner."
 
