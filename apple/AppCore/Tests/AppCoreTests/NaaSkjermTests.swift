@@ -35,6 +35,92 @@ import Testing
         #expect(s.plattformOk)
     }
 
+    // MARK: - tre hero-tilstander (identitet regel 3)
+
+    private func avvikArt(_ art: String, navn: String = "x", tekst: String = "feilet") -> NaaAvvik {
+        NaaAvvik(art: art, navn: navn, tekst: tekst, ts: nå)
+    }
+
+    @Test func kreverDegNårNoeVenterOgAvvikFinnesForsattErKrever() {
+        let n = Naa(kort: [NaaKort(id: "x", status: "pending")], avvik: [avvikArt("jobb")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1), "krever > 0 vinner over avvik")
+        #expect(s.heroTittel == "Krever deg")
+        #expect(s.heroUndertekst == "Godkjenning")
+        #expect(s.heroTale == "1 krever deg. Godkjenning")
+        #expect(s.avvik.count == 1, "avviket står fortsatt i lista")
+    }
+
+    @Test func ingenOppgaverNårIngentingKreverDegMenAvvikFinnes() {
+        let n = Naa(avvik: [avvikArt("jobb", navn: "backup", tekst: "siste kjøring 03:10")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .ingenOppgaver(avvik: 1))
+        #expect(s.antallKrever == 0, "LCD viser 0")
+        #expect(s.heroTittel == "Ingen oppgaver")
+        #expect(s.heroUndertekst == "1 avvik")
+        #expect(s.heroTale == "Ingen oppgaver, 1 avvik")
+        #expect(s.avvik.map(\.tittel) == ["backup"], "avviket står fortsatt i lista")
+        #expect(s.kolonner[0].verdi == 1 && s.kolonner[0].tone == .feil, "og i kolonnen")
+        #expect(s.godkjenninger.isEmpty && s.venter.isEmpty)
+    }
+
+    @Test func ingenOppgaverTellerAlleAvvikOgBrukerOrdetAvvikIFlertall() {
+        let n = Naa(avvik: [avvikArt("jobb"), avvikArt("tjeneste"), avvikArt("hjerteslag")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .ingenOppgaver(avvik: 3))
+        #expect(s.heroUndertekst == "3 avvik")
+        #expect(s.heroTale == "Ingen oppgaver, 3 avvik")
+        #expect(!s.plattformOk, "plattformstatusen er uavhengig av heroen")
+    }
+
+    @Test func altRoligNårIngentingKreverDegOgIngenAvvik() {
+        let s = NaaSkjerm(naa: Naa(), traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .rolig)
+        #expect(s.heroTittel == "Alt rolig")
+        #expect(s.heroUndertekst == "Ingenting venter på deg")
+        #expect(s.heroTale == "Alt rolig. Ingenting venter på deg")
+    }
+
+    @Test func ventendeAvvikErIkkeAvvikOgGirKreverDegIkkeIngenOppgaver() {
+        // «venter»-avvik regnes IKKE som avvik, de teller i krever (definisjonene fra NaaSkjerm, uendret).
+        let n = Naa(avvik: [avvikArt("venter", navn: "ko-1", tekst: "Bygg klient")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1))
+        #expect(s.avvik.isEmpty)
+        #expect(s.heroUndertekst == "1 venter")
+    }
+
+    @Test func avgjortKortTellerIkkeIKreverMenEkteAvvikGirIngenOppgaver() {
+        let n = Naa(kort: [NaaKort(id: "a", status: "approved")], avvik: [avvikArt("jobb")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .ingenOppgaver(avvik: 1), "et avgjort kort teller ikke i krever")
+    }
+
+    @Test func ventendeAvvikBlandetMedEkteAvvikTellerBareDeEkteSomAvvik() {
+        let n = Naa(avvik: [avvikArt("venter", navn: "ko-1", tekst: "Bygg klient"), avvikArt("jobb")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1), "venter teller i krever, så INGEN OPPGAVER vises ikke")
+        #expect(s.avvik.count == 1)
+    }
+
+    @Test func kortetsDobbeltgjengerRegnesIkkeToGanger() {
+        let kort = NaaKort(id: "a", describe: "Armere alarmen", status: "pending")
+        let n = Naa(kort: [kort], avvik: [NaaAvvik(art: "venter", navn: "m", tekst: "Armere alarmen", ts: nå, approvalId: "a")])
+        let s = NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k)
+        #expect(s.tilstand == .krever(1))
+    }
+
+    @Test func heroTekstenErForskjelligIDeTreTilstandeneMenAlleBrytesISammeAntallLinjer() {
+        let krever = NaaSkjerm(naa: Naa(kort: [NaaKort(id: "x", status: "pending")]), traader: [], nå: nå, kalender: k)
+        let ingen = NaaSkjerm(naa: Naa(avvik: [avvikArt("jobb")]), traader: [], nå: nå, kalender: k)
+        let rolig = NaaSkjerm(naa: Naa(), traader: [], nå: nå, kalender: k)
+        #expect(Set([krever.heroTittel, ingen.heroTittel, rolig.heroTittel]).count == 3)
+        for s in [krever, ingen, rolig] {
+            #expect(!s.heroUndertekst.contains("\n"))
+            #expect(s.heroTittel.split(separator: " ").count <= 2, "tittelen brytes i høyst to linjer, så heroen er like høy")
+        }
+    }
+
     @Test func kortUtenStatusRegnesSomVentende() {
         let n = Naa(kort: [NaaKort(id: "x", status: nil)])
         #expect(NaaSkjerm(naa: n, traader: [], nå: nå, kalender: k).tilstand == .krever(1))

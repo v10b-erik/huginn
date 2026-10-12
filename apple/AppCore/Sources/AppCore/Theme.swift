@@ -84,7 +84,7 @@ public enum Theme {
         tekst: RGBA(0.1059, 0.1294, 0.251),
         dempet: RGBA(0.3569, 0.3961, 0.502),
         svak: RGBA(0.5412, 0.5765, 0.6706),
-        aksent: RGBA(0.3137, 0.3843, 0.8118),
+        aksent: RGBA(0.2824, 0.3451, 0.7294),
         aksentFyll1: RGBA(0.3529, 0.4235, 0.8392),
         aksentFyll2: RGBA(0.3137, 0.3843, 0.8118),
         aksentTone: RGBA(0.3137, 0.3843, 0.8118, 0.14),

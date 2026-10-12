@@ -15,7 +15,11 @@ import Testing
         let etter = try await kilde.hent()
         #expect(etter.godkjenninger.isEmpty)
         #expect(etter.venter.isEmpty, "kortets «venter»-avvik forsvinner også, ellers telles saken som en ny")
-        #expect(etter.tilstand == .rolig)
+        // Demoen har også «hermod-backup»-avviket, og rolig betyr ingen avvik (regel 3): uten kort er tilstanden
+        // «Ingen oppgaver», ikke «Alt rolig» (endret 2026-10-12).
+        #expect(etter.tilstand == .ingenOppgaver(avvik: 1))
+        #expect(etter.heroTittel == "Ingen oppgaver")
+        #expect(etter.heroUndertekst == "1 avvik")
     }
 
     @Test func utenDemoAvgjortErSkjermenUendret() async throws {

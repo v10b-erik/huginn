@@ -68,6 +68,38 @@ import Testing
         }
     }
 
+    /// Blandet flate: `lag` med dekkevne over `under` (som SwiftUI tegner det).
+    private func over(_ lag: Theme.RGBA, alfa: Double, _ under: Theme.RGBA) -> Theme.RGBA {
+        Theme.RGBA(lag.r * alfa + under.r * (1 - alfa), lag.g * alfa + under.g * (1 - alfa), lag.b * alfa + under.b * (1 - alfa))
+    }
+
+    /// AKSENT-tekst på aksent-toner: «GODKJENNING»-etiketten på godkjenningsbrikken (`krever1` øverst i gradienten) og valgt
+    /// fane (`aksentTone` → `krever2`, teksten midt i flaten, så snittet av dekkevnene). Målt fra simulatorbilder i lys modus
+    /// ga aksenten 3,86:1 på brikken og 4,04:1 på fanen før 2026-10-12; flatene under er modellert så de treffer det målet
+    /// (modellen ga 3,90 og ca. 4,1). Tidligere dekket ingen test dette, bare `tekst` på tonen.
+    @Test func aksentTekstPåAksentToneHolderWCAG() {
+        for (navn, p) in moduser {
+            let brikke = over(Theme.RGBA(p.krever1.r, p.krever1.g, p.krever1.b), alfa: p.krever1.a, p.kontrastflate)
+            let midtAlfa = (p.aksentTone.a + p.krever2.a) / 2
+            let fane = over(Theme.RGBA(p.aksentTone.r, p.aksentTone.g, p.aksentTone.b), alfa: midtAlfa, p.kontrastflate)
+            #expect(kontrast(p.aksent, brikke) >= 4.5, "\(navn): aksent på godkjenningsbrikken har kontrast \(kontrast(p.aksent, brikke))")
+            #expect(kontrast(p.aksent, fane) >= 4.5, "\(navn): aksent på valgt fane har kontrast \(kontrast(p.aksent, fane))")
+        }
+    }
+
+    /// Avgjørelse 2026-10-12: lys aksent-tekst (FRA/KLASSE) skal ha klar margin til 4,5, ikke bare så vidt over (4,53).
+    @Test func lysAksentTekstHarMarginMotBåndet() {
+        #expect(kontrast(Theme.lys.aksent, Theme.lys.kontrastflateBand) >= 5.0)
+        #expect(kontrast(Theme.lys.aksent, Theme.lys.kontrastflate) >= 5.0)
+    }
+
+    /// Knappefyllene (hvit tekst) skal ikke ha flyttet seg da tekstaksenten ble mørknet: de er egne tokens.
+    @Test func knappefyllHarSammeKontrastSomFør() {
+        #expect(abs(kontrast(Theme.lys.paAksent, Theme.lys.aksentFyll1) - 4.615) < 0.01)
+        #expect(abs(kontrast(Theme.lys.paAksent, Theme.lys.aksentFyll2) - 5.264) < 0.01)
+        #expect(abs(kontrast(Theme.mork.paAksent, Theme.mork.aksentFyll2) - 5.365) < 0.01)
+    }
+
     @Test func svakErAldriTekst() {
         // --farge-svak er for ikke-tekst (slukket LED, tomme spor). Den skal ikke klare tekstkravet:
         // klarer den det, har noen gjort den til tekstfarge uten å si fra, eller skalaen har flyttet seg.

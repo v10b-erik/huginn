@@ -7,8 +7,11 @@ public struct NaaSkjerm: Sendable, Equatable {
     public enum Tilstand: Sendable, Equatable {
         /// `antall` ting venter på Erik (godkjenninger + ventende missions).
         case krever(Int)
-        /// Ingenting venter. En egen tilstand som alltid tegnes (identitet regel 3), ikke en tom variant.
+        /// Ingenting venter OG ingen avvik. En egen tilstand som alltid tegnes (identitet regel 3), ikke en tom variant.
         case rolig
+        /// Ingenting krever deg, men `avvik` ting avviker (avvik uten «venter»-avvikene, som teller i `krever`).
+        /// Rolig betyr ingen avvik (regel 3), så heroen sier «Ingen oppgaver», ikke «Alt rolig».
+        case ingenOppgaver(avvik: Int)
     }
 
     /// Hva fargen skal bety (identitet regel 1). Ingen «pynt»-tone finnes.
@@ -133,6 +136,15 @@ public struct NaaSkjerm: Sendable, Equatable {
         return 0
     }
 
+    /// Det VoiceOver leser for heroen (viewet leser prikkene aldri). «Ingen oppgaver, N avvik» når avvik finnes.
+    public var heroTale: String {
+        switch tilstand {
+        case .krever(let n): "\(n) krever deg. \(heroUndertekst)"
+        case .ingenOppgaver(let n): "Ingen oppgaver, \(n) avvik"
+        case .rolig: "Alt rolig. \(heroUndertekst)"
+        }
+    }
+
     public init(naa: Naa, traader: [Traad], nå: Date, kalender: Calendar = .current) {
         let kalender = Tid.gregoriansk(kalender)
         topplinje = Tid.datolinje(nå: nå, kalender: kalender)
@@ -153,13 +165,25 @@ public struct NaaSkjerm: Sendable, Equatable {
         let ventendeAvvik = naa.avvik.filter { $0.art == "venter" }
             .filter { a in !ventendeKort.contains { Self.samsvarer(avvik: a, kort: $0) } }
         let krever = ventendeKort.count + ventendeAvvik.count
-        tilstand = krever > 0 ? .krever(krever) : .rolig
+        // avvik = alt som avviker unntatt det som bare venter på deg (samme definisjon som `avvik`-listen under).
+        let avvikene = naa.avvik.filter { $0.art != "venter" }
+        if krever > 0 {
+            tilstand = .krever(krever)
+        } else if !avvikene.isEmpty {
+            tilstand = .ingenOppgaver(avvik: avvikene.count)
+        } else {
+            tilstand = .rolig
+        }
 
         // plattform ok = ingen avvik som sier at selve plattformen er syk.
         plattformOk = !naa.avvik.contains { $0.art == "tjeneste" || $0.art == "hjerteslag" }
 
-        heroTittel = krever > 0 ? "Krever deg" : "Alt rolig"
-        heroUndertekst = Self.heroUndertekst(kort: ventendeKort.count, venter: ventendeAvvik.count)
+        switch tilstand {
+        case .krever: heroTittel = "Krever deg"
+        case .ingenOppgaver: heroTittel = "Ingen oppgaver"
+        case .rolig: heroTittel = "Alt rolig"
+        }
+        heroUndertekst = Self.heroUndertekst(kort: ventendeKort.count, venter: ventendeAvvik.count, avvik: avvikene.count)
 
         godkjenninger = ventendeKort.map { kort in
             // Godkjenn = kortets `approve` (eller dets første handling); Avslå er alltid `deny` (serveren tar den uansett).
@@ -177,8 +201,6 @@ public struct NaaSkjerm: Sendable, Equatable {
 
         venter = ventendeAvvik.map { Self.venterRad(id: $0.id, navn: $0.navn, tekst: $0.tekst) }
 
-        // avvik = alt som avviker unntatt det som bare venter på deg.
-        let avvikene = naa.avvik.filter { $0.art != "venter" }
         avvik = avvikene.map {
             // Serverens «failed» er teknisk; ordet vi viser er norsk. En jobb som avviker har feilet.
             // Ukjent tekst bæres uendret som undertekst.
@@ -227,8 +249,8 @@ public struct NaaSkjerm: Sendable, Equatable {
 
     /// Bevisst uten alder: undertekstene fryser mellom hentinger. Brikkens egen teller viser alderen levende.
     /// Heroens LCD stopper på 99; teksten sier alltid det faktiske tallet.
-    private static func heroUndertekst(kort: Int, venter: Int) -> String {
-        if kort == 0 && venter == 0 { return "Ingenting venter på deg" }
+    private static func heroUndertekst(kort: Int, venter: Int, avvik: Int) -> String {
+        if kort == 0 && venter == 0 { return avvik > 0 ? "\(avvik) avvik" : "Ingenting venter på deg" }
         var deler: [String] = []
         if kort + venter > 99 { deler.append("\(kort + venter) saker") }
         if kort == 1 {
