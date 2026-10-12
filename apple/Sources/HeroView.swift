@@ -30,16 +30,28 @@ struct HeroView: View {
                     glod: glod ? Color(p.aksent).opacity(0.5) : nil
                 )
                 VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
-                    Text(tittel.replacingOccurrences(of: " ", with: "\n"))
-                        .skrift(.hero)
-                        .foregroundStyle(krever ? Color(p.tekst) : Color(p.dempet))
-                        .fixedSize(horizontal: false, vertical: true)
-                    // Én linje i begge tilstander, så heroen er like høy og innholdet under ikke hopper.
-                    Text(undertekst)
-                        .skrift(.etikettAksent)
-                        .foregroundStyle(krever ? Color(p.aksent) : Color(p.dempet))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    // «OPPGAVER» er det bredeste ordet: det krymper litt (aldri brytes midt i ordet) i stedet for å
+                    // gi en tredje linje. Krympingen gjør to linjer lavere, så en usynlig toLinjers referanse i samme
+                    // stil setter høyden: heroen er like høy i alle tre tilstandene og innholdet under hopper ikke.
+                    ZStack(alignment: .topLeading) {
+                        Text("A\nA").skrift(.hero).hidden().accessibilityHidden(true)
+                        Text(tittel.replacingOccurrences(of: " ", with: "\n"))
+                            .skrift(.hero)
+                            .foregroundStyle(krever ? Color(p.tekst) : Color(p.dempet))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    // Én linje i alle tilstander. Lange tekster («Ingenting venter på deg») krymper litt, og krympingen
+                    // gjør linja lavere; den usynlige referansen holder høyden lik (ellers 1 pt lavere hero i «Alt rolig»).
+                    ZStack(alignment: .topLeading) {
+                        Text("A").skrift(.etikettAksent).hidden().accessibilityHidden(true)
+                        Text(undertekst)
+                            .skrift(.etikettAksent)
+                            .foregroundStyle(krever ? Color(p.aksent) : Color(p.dempet))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
                 Spacer(minLength: 0)
             }
