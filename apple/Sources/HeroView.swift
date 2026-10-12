@@ -1,11 +1,14 @@
 import SwiftUI
 import AppCore
 
-/// Heroen: punktmatrise-tallet sier hva som krever deg. Normal dag = et grått 0 og «ALT ROLIG».
+/// Heroen: punktmatrise-tallet sier hva som krever deg. Tre tilstander (identitet regel 3): «KREVER DEG» med tallet,
+/// «INGEN OPPGAVER» (grått 0 og «N avvik») når bare avvik finnes, og «ALT ROLIG» (grått 0) når ingenting er galt.
 struct HeroView: View {
     enum Visning {
         case krever(Int)
         case rolig
+        /// Ingenting krever deg, men det finnes avvik: grått 0 som rolig, undertekst «N avvik» (ordet bærer meningen).
+        case ingenOppgaver
         /// Før vi vet noe: slukket felt, ingen tall (et 0 her ville vært en løgn).
         case laster
     }
@@ -13,6 +16,8 @@ struct HeroView: View {
     var visning: Visning
     var tittel: String
     var undertekst: String
+    /// VoiceOver-teksten fra `NaaSkjerm.heroTale`; `nil` = utledet her (bare «laster»).
+    var tale: String?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -52,7 +57,7 @@ struct HeroView: View {
     private var lcdTekst: String {
         switch visning {
         case .krever(let n): String(min(max(n, 0), 99))
-        case .rolig: "0"
+        case .rolig, .ingenOppgaver: "0"
         case .laster: " "
         }
     }
@@ -64,10 +69,12 @@ struct HeroView: View {
 
     /// VoiceOver leser meningen, ikke prikkene.
     private var etikett: String {
+        if let tale { return tale }
         switch visning {
-        case .krever(let n): "\(n) krever deg. \(undertekst)"
-        case .rolig: "Alt rolig. \(undertekst)"
-        case .laster: "Henter. \(undertekst)"
+        case .krever(let n): return "\(n) krever deg. \(undertekst)"
+        case .rolig: return "Alt rolig. \(undertekst)"
+        case .ingenOppgaver: return "Ingen oppgaver. \(undertekst)"
+        case .laster: return "Henter. \(undertekst)"
         }
     }
 }

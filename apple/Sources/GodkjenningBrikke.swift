@@ -196,7 +196,8 @@ struct KnappStil: ButtonStyle {
                             .mask(alignment: .top) {
                                 LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Theme.Radius.knapp)
                             })
-                        .shadow(color: Color(p.aksentFyll2).opacity(0.55), radius: 8, x: 0, y: 6)
+                        // Løfteskygge bare i lys modus (identitet regel 7); i mørk modus er den en blå glød under knappen.
+                        .shadow(color: scheme == .dark ? .clear : Color(p.aksentFyll2).opacity(0.55), radius: 8, x: 0, y: 6)
                 case .sekundar:
                     Color.clear.glassFlate(radius: Theme.Radius.knapp)
                 case .stille:

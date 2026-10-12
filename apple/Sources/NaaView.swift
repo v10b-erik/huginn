@@ -156,10 +156,12 @@ struct NaaView: View {
     }
 
     @ViewBuilder private func innhold(_ s: NaaSkjerm) -> some View {
-        HeroView(
-            visning: s.tilstand == .rolig ? .rolig : .krever(s.antallKrever),
-            tittel: s.heroTittel, undertekst: s.heroUndertekst
-        )
+        let heroVisning: HeroView.Visning = switch s.tilstand {
+        case .krever(let n): .krever(n)
+        case .ingenOppgaver: .ingenOppgaver
+        case .rolig: .rolig
+        }
+        HeroView(visning: heroVisning, tittel: s.heroTittel, undertekst: s.heroUndertekst, tale: s.heroTale)
         svarRad
         ForEach(Array(s.godkjenninger.enumerated()), id: \.element.id) { i, g in
             GodkjenningBrikke(
