@@ -19,6 +19,33 @@ struct HeroView: View {
     /// VoiceOver-teksten fra `NaaSkjerm.heroTale`; `nil` = utledet her (bare «laster»).
     var tale: String?
     @Environment(\.colorScheme) private var scheme
+    @State private var kolonneBredde: CGFloat = 0
+    @State private var ordBredde: CGFloat = 0
+
+    /// Det bredeste ordet heroen kan sette i tittelen («Ingen oppgaver»). Setter størrelsen for alle tilstandene.
+    static let bredesteOrd = "OPPGAVER"
+    /// Gulvet (0,3) rekker til de største tekststørrelsene på en smal skjerm; under det kuttes «OPPGAVER» heller enn å bli uleselig.
+    static let minSkala: CGFloat = 0.3
+    /// Luft (4 %) så ordet aldri står nøyaktig på kanten: fonter skalerer ikke helt lineært, og et ord som er 1 pt for bredt kuttes («OPPGAV…»).
+    static let margin: CGFloat = 0.96
+
+    /// Skalaen som gir det bredeste ordet plass i kolonnen: aldri større enn tokenet, aldri under gulvet, og INGEN
+    /// avhengighet av tilstanden. Ukjent bredde (før første måling) gir full størrelse.
+    static func skala(kolonne: CGFloat, ord: CGFloat) -> CGFloat {
+        guard kolonne > 0, ord > 0 else { return 1 }
+        return min(1, max(minSkala, kolonne / ord * margin))
+    }
+
+    /// Tittelstilen: heroen-stilen fra tokens, skalert likt (størrelse og linjehøyde) for alle tilstander.
+    static func tittelStil(skala: CGFloat) -> SkriftStil {
+        typealias T = Theme.Typografi
+        return SkriftStil(
+            familie: .visningBold, str: T.Str.hero * skala, linjehoyde: T.Lh.hero * skala,
+            sperring: T.Sperring.hero, relativTil: .largeTitle, versaler: true
+        )
+    }
+
+    private var skala: CGFloat { Self.skala(kolonne: kolonneBredde, ord: ordBredde) }
 
     var body: some View {
         let p = Theme.palett(for: scheme)
@@ -30,18 +57,16 @@ struct HeroView: View {
                     glod: glod ? Color(p.aksent).opacity(0.5) : nil
                 )
                 VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
-                    // «OPPGAVER» er det bredeste ordet: det krymper litt (aldri brytes midt i ordet) i stedet for å
-                    // gi en tredje linje. Krympingen gjør to linjer lavere, så en usynlig toLinjers referanse i samme
-                    // stil setter høyden: heroen er like høy i alle tre tilstandene og innholdet under hopper ikke.
-                    ZStack(alignment: .topLeading) {
-                        Text("A\nA").skrift(.hero).hidden().accessibilityHidden(true)
-                        Text(tittel.replacingOccurrences(of: " ", with: "\n"))
-                            .skrift(.hero)
-                            .foregroundStyle(krever ? Color(p.tekst) : Color(p.dempet))
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.5)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    // Usynlig, null høyde: gir kolonnen all ledig bredde, og måler den.
+                    Color.clear.frame(maxWidth: .infinity, minHeight: 0, maxHeight: 0)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { kolonneBredde = $0 }
+                    // ÉN skriftstørrelse for tittelen i alle tilstander: den som gir «OPPGAVER» (det bredeste ordet)
+                    // plass i kolonnen. Ingen tilstand krymper for seg selv, så heroen ser ut som samme komponent.
+                    Text(tittel.replacingOccurrences(of: " ", with: "\n"))
+                        .skrift(Self.tittelStil(skala: skala))
+                        .foregroundStyle(krever ? Color(p.tekst) : Color(p.dempet))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     // Én linje i alle tilstander. Lange tekster («Ingenting venter på deg») krymper litt, og krympingen
                     // gjør linja lavere; den usynlige referansen holder høyden lik (ellers 1 pt lavere hero i «Alt rolig»).
                     ZStack(alignment: .topLeading) {
@@ -56,6 +81,11 @@ struct HeroView: View {
                 Spacer(minLength: 0)
             }
             .frame(minHeight: Double(Punktmatrise.rader) * Theme.Lcd.pitchHero)
+            // Det bredeste tittelordet i full størrelse, usynlig og utenfor layouten: bare for å måle.
+            .overlay(alignment: .topLeading) {
+                Text(Self.bredesteOrd).skrift(.hero).fixedSize().hidden().accessibilityHidden(true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { ordBredde = $0 }
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(etikett)
@@ -79,16 +109,8 @@ struct HeroView: View {
         krever ? Color(p.aksent) : Color(p.dempet)
     }
 
-    /// VoiceOver leser meningen, ikke prikkene.
-    private var etikett: String {
-        if let tale { return tale }
-        switch visning {
-        case .krever(let n): return "\(n) krever deg. \(undertekst)"
-        case .rolig: return "Alt rolig. \(undertekst)"
-        case .ingenOppgaver: return "Ingen oppgaver. \(undertekst)"
-        case .laster: return "Henter. \(undertekst)"
-        }
-    }
+    /// VoiceOver leser meningen, ikke prikkene. Teksten kommer fra `NaaSkjerm.heroTale` (én kilde); bare «laster» har ingen.
+    private var etikett: String { tale ?? "Henter. \(undertekst)" }
 }
 
 /// Chippen øverst til høyre: lampe + ord (aldri farge alene). Den bærer tilstanden til tilkoblingen når «Nå» ikke

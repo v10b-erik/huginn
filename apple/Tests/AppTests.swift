@@ -69,3 +69,29 @@ import AppCore
         #expect(Tabbar.faner.filter(\.aktiv).map(\.id) == ["naa"])
     }
 }
+
+/// Heroens tittel har ÉN skriftstørrelse for alle tre tilstandene (avgjørelse 2026-10-12): skalaen hentes av det bredeste
+/// ordet og tar ikke imot noe om tilstanden, så «Krever deg», «Ingen oppgaver» og «Alt rolig» kan ikke avvike fra hverandre.
+@Suite struct HeroTittelTests {
+    @Test func skalaGirDetBredesteOrdetPlassOgErAldriStørreEnnTokenet() {
+        #expect(HeroView.skala(kolonne: 230, ord: 232) < 1)
+        #expect(abs(HeroView.skala(kolonne: 200, ord: 232) * 232 - 200 * HeroView.margin) < 0.001, "ordet fyller kolonnen minus marginen")
+        #expect(HeroView.skala(kolonne: 232, ord: 232) < 1, "ordet som akkurat passer får likevel luft")
+        #expect(HeroView.skala(kolonne: 300, ord: 232) == 1, "god plass: tokenets størrelse")
+    }
+
+    @Test func skalaHarGulvOgTålerUkjentBredde() {
+        #expect(HeroView.skala(kolonne: 10, ord: 232) == HeroView.minSkala)
+        #expect(HeroView.skala(kolonne: 0, ord: 232) == 1, "før første måling")
+        #expect(HeroView.skala(kolonne: 200, ord: 0) == 1)
+    }
+
+    @Test func tittelstilenErLikForAlleTilstanderOgFølgerSkalaen() {
+        let full = HeroView.tittelStil(skala: 1)
+        #expect(full.str == Theme.Typografi.Str.hero && full.linjehoyde == Theme.Typografi.Lh.hero)
+        let liten = HeroView.tittelStil(skala: 0.9)
+        #expect(abs(liten.str - Theme.Typografi.Str.hero * 0.9) < 0.0001)
+        #expect(abs((liten.linjehoyde ?? 0) - Theme.Typografi.Lh.hero * 0.9) < 0.0001)
+        #expect(liten.versaler && liten.familie == .visningBold)
+    }
+}

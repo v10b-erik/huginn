@@ -38,6 +38,15 @@ struct NaaView: View {
         self.onKontakt = onKontakt
     }
 
+    /// Innholdets maksbredde. Synsløkka (`--bredde=375`, bare DEBUG) etterligner en smal skjerm uten en smal simulator.
+    private static var maksBredde: CGFloat {
+        #if DEBUG
+        if let v = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--bredde=") }),
+           let b = Double(v.dropFirst("--bredde=".count)) { return b }
+        #endif
+        return 560
+    }
+
     var body: some View {
         let p = Theme.palett(for: scheme)
         ScrollViewReader { proxy in
@@ -55,7 +64,7 @@ struct NaaView: View {
             .padding(.horizontal, Theme.Avstand.s4)
             .padding(.top, Theme.Avstand.s4)
             .padding(.bottom, Theme.Avstand.s4)
-            .frame(maxWidth: 560)
+            .frame(maxWidth: Self.maksBredde)
             .frame(maxWidth: .infinity)
         }
         #if DEBUG
