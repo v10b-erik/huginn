@@ -29,9 +29,14 @@ Ett tall sier hva som krever deg (punktmatrise-LCD-en), og farge betyr noe eller
 2. **Form skiller «krever deg» fra «pågår».** Blå *fylt flate* = du må handle (Godkjenn-knappen,
    godkjenningsbrikken). Blå *strek, kant eller tone* = noe pågår (kø-segmentet, fremdriftsstreken, valgt
    tab). Valgt tab er aldri fylt, så den ikke leses som en handling.
-3. **Tallet er statusen.** Heroen er et punktmatrise-tall (5×7) med «KREVER DEG» ved siden av. En normal
-   dag er et grått **0** og «ALT ROLIG»: ingen brikke for godkjenning, ingen avvik, ingenting lyser. Rolig dag
-   er en egen tilstand som alltid tegnes, ikke en tom variant.
+3. **Tallet er statusen.** Heroen er et punktmatrise-tall (5×7) med et ord ved siden av, i tre tilstander som alltid
+   tegnes (ingen er en tom variant) og har samme høyde, så innholdet under ikke hopper:
+   - **KREVER DEG**: tallet er antall saker (godkjenninger og ventende), i aksent.
+   - **INGEN OPPGAVER**: ingenting krever deg, men det finnes avvik. Grått **0** og undertekst «N avvik» i dempet
+     tekst (ordet bærer betydningen, aldri farge alene). Avvikene står i kolonnen og lista som vanlig.
+   - **ALT ROLIG**: ingenting krever deg og ingen avvik. Grått **0** og «Ingenting venter på deg».
+   Rolig betyr ingen avvik, derfor er «INGEN OPPGAVER» en egen tilstand. «Venter»-avvik regnes ikke som avvik; de teller
+   i «krever».
 4. **Aldri farge alene.** Tilstand står alltid også som ord eller form («FEILET», «VENTER», «RENT»), så
    den leses uten fargesyn og i bilen.
 5. **To skrifter, to oppgaver.** Archivo (700, versaler i heroen) for ord og tall; Martian Mono for etiketter,
@@ -39,13 +44,31 @@ Ett tall sier hva som krever deg (punktmatrise-LCD-en), og farge betyr noe eller
    alltid i små bokstaver (`huginn fe50dd4`), aldri versalisert.
 6. **Radiusskalaen blandes aldri:** brikke 28 · knapp 18 · bånd 16 · chip 14 · strek helt rund. LED er rund.
 7. **Glass er overflate, ikke pynt.** Halvgjennomsiktig fyll, 1 px kant, en lyskant øverst. Skygge bare i
-   lys modus (der den løfter brikken fra bakgrunnen); i mørk modus gir den ingenting.
+   lys modus (der den løfter brikken fra bakgrunnen). I mørk modus gir den ingenting: **ingen glød under fylte
+   knapper (Godkjenn, Koble til) og ingen under valgt fane.** Unntaket er punktmatrise-prikkene: LCD-gløden i mørk
+   modus er en del av tallet som signatur og beholdes.
 8. **Mørk og lys er likeverdige, og appen følger systemet.** Samme roller, bevisst tegnede verdier i hver
    modus (ikke invertering). I begge moduser er det punktmatrise-tallet som er signaturen.
 9. **Versjonen er alltid synlig** (git-sha nederst på hver skjerm, `BuildInfo`).
 10. **Hvert tall som bærer tekst har målt kontrast ≥ 4,5 mot flaten.** Det er en test
     (`ThemeTests`), ikke en intensjon. `--farge-svak` er *ikke-tekst* (slukket lampe, tomt spor) og
     testen feiler hvis den blir brukt som tekst.
+
+## Avgjørelser 2026-10-12
+
+Erik svarte på fem spørsmål etter første uke i bruk på iPhonen:
+
+1. **Fjern gløden under Godkjenn i mørk modus.** Gjelder alle fylte knapper og valgt fane; lys modus beholder den myke
+   løfteskyggen; LCD-prikkene beholder gløden (regel 7).
+2. **«INGEN OPPGAVER»** når ingenting krever deg men det finnes avvik (regel 3). `NaaSkjerm.Tilstand.ingenOppgaver`.
+3. **Mørkne aksenten for tekst i lys modus.** `--farge-aksent` (bare i lys, bare de to lys-blokkene): `#5062CF` →
+   **`#4757B8`**. Hvorfor ikke Eriks anslag `#4A5BC4` (5,04 mot båndet): aksent-tekst ligger også på aksent-toner
+   (etiketten på godkjenningsbrikken, valgt fane), og der ga `#4A5BC4` bare 4,3 og 4,5 målt fra bilde. `#4757B8`
+   gir 5,44 mot båndet, 4,56 på brikken og 4,80 på fanen. Knappefyllene (`aksent-fyll-1/-2`, `pa-aksent`) er
+   urørt: hvit tekst 4,62 / 5,26. Mørk modus er urørt.
+4. **Synlig grep på alle ark** (`.presentationDragIndicator(.visible)` på bekreftelses- og tilkoblingsarket).
+   `.interactiveDismissDisabled` gjelder fortsatt mens autentiseringen pågår.
+5. **SHA og URL i mono: utsatt.** Ikke gjort nå; regel 5 står som den er.
 
 ## Hva som ble valgt, og hvorfor (reisen)
 
