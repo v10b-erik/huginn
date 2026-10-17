@@ -9,43 +9,62 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
 
     public static let demo = "--demo"
     public static let rolig = "--demo-rolig"
+    #if DEBUG
+    // Synsløkke-/test-hjelperne finnes BARE i DEBUG-bygg: navnene, parsingen og logikken er kompilert bort i release
+    // (ikke bare gatet på `tillatLive` ved kjøring), så de ikke ligger som strenger i binæren. `tillatLive` beholdes i
+    // signaturene så kallestedene er like i begge konfigurasjoner; i release har den ingen virkning fordi det den
+    // styrte ikke finnes.
     public static let ekte = "--demo-ekte"
     /// `--demo-vert=<host>` (synsløkka, bare DEBUG): demoens kilde-linje vises som `live · <første ledd av host>`,
     /// så foten kan fotograferes i formen som brakk (`live · ygg-v1`) uten ekte tilkobling.
     public static let demoVertPrefiks = "--demo-vert="
     public static let miljoURL = "HUGINN_URL"
     public static let miljoToken = "HUGINN_TOKEN"
+    #endif
 
     /// Presedens: launch-argument `--demo`/`--demo-rolig` > DEBUG-miljø (`HUGINN_URL` + `HUGINN_TOKEN`) > lagret
     /// tilkobling > ingen kilde (`nil`: da skal «Koble til» vises). Demo er aldri en stille reserve.
     /// - Parameter tillatLive: `false` i release; da ignoreres miljøvariablene helt.
     /// `--demo-ekte` er et synsløkke-verktøy og følger `tillatLive`: i release ignoreres det.
     public static func velg(argumenter: [String], miljo: [String: String], tillatLive: Bool, lagret: Tilkobling? = nil) -> KildeValg? {
+        #if DEBUG
         if tillatLive, argumenter.contains(ekte) { return .demo(rolig: false, ekte: true) }
+        #endif
         if argumenter.contains(rolig) { return .demo(rolig: true) }
         if argumenter.contains(demo) { return .demo(rolig: false) }
+        #if DEBUG
         if tillatLive,
            let tekst = miljo[miljoURL], let url = URL(string: tekst), url.scheme?.hasPrefix("http") == true,
            let token = miljo[miljoToken], !token.isEmpty {
             return .live(url: url, token: token)
         }
+        #endif
         return lagret?.kildeValg
     }
 
     /// Kort navn til foten. Aldri tokenet.
     public var navn: String {
         switch self {
-        case .demo(let rolig, let ekte): ekte ? "demo · ekte form" : (rolig ? "demo · rolig" : "demo")
+        case .demo(let rolig, let ekte):
+            #if DEBUG
+            ekte ? "demo · ekte form" : (rolig ? "demo · rolig" : "demo")
+            #else
+            rolig ? "demo · rolig" : "demo"
+            #endif
         case .live(let url, _): "live · \(vertVisning(url.host))"
         }
     }
 
     /// Verten fra `--demo-vert=`, eller `nil` (ikke gitt, tom, eller `tillatLive == false`, som i release).
     public static func demoVert(argumenter: [String], tillatLive: Bool) -> String? {
+        #if DEBUG
         guard tillatLive,
               let a = argumenter.first(where: { $0.hasPrefix(demoVertPrefiks) }) else { return nil }
         let v = String(a.dropFirst(demoVertPrefiks.count))
         return v.isEmpty ? nil : v
+        #else
+        return nil
+        #endif
     }
 
     /// Kilde-linja i foten: full og smal form. For en demo med `demoVert` ser den ut som en live-kilde.
@@ -78,6 +97,7 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     /// `--demo-svar=<avgjort|henger|usikkert|alleredeAvgjort>` og `--demo-lang` (synsløkka, bare DEBUG): hva demoens
     /// lokale «server» svarer på Godkjenn/Avslå, og om kortet har en lang tekst. Utenfor DEBUG (`tillatLive == false`)
     /// alltid standard.
+    #if DEBUG
     public static let demoSvarPrefiks = "--demo-svar="
     public static let demoLang = "--demo-lang"
     /// `--demo-handlinger=<en|flere>`: demokortet har én egen handling («✉️ Send») eller to (ingen Godkjenn-vei).
@@ -89,34 +109,51 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     public static let autoSvarPrefiks = "--auto-svar="
     /// `--auto-bekreft` (synsløkka, bare DEBUG): trykker bekreft i bekreftelsen som `--auto-svar` åpnet.
     public static let autoBekreft = "--auto-bekreft"
+    #endif
 
     public static func demoAvgjort(argumenter: [String], tillatLive: Bool) -> DemoAvgjort {
+        #if DEBUG
         guard tillatLive else { return DemoAvgjort() }
         let atferd = argumenter.first { $0.hasPrefix(demoSvarPrefiks) }
             .flatMap { DemoAvgjort.Atferd(rawValue: String($0.dropFirst(demoSvarPrefiks.count))) } ?? .avgjort
         let handlinger = argumenter.first { $0.hasPrefix(demoHandlingerPrefiks) }
             .flatMap { DemoAvgjort.Handlinger(rawValue: String($0.dropFirst(demoHandlingerPrefiks.count))) } ?? .standard
         return DemoAvgjort(atferd: atferd, langtKort: argumenter.contains(demoLang), handlinger: handlinger)
+        #else
+        return DemoAvgjort()
+        #endif
     }
 
     /// Bare for en DEMO-kilde: mot en live kilde har ingen auto-oppførsel noen virkning, uansett argumenter. Ellers kunne et
     /// glemt argument (eller en agent som styrer UI) godkjent et ekte kort uten biometri.
     public static func brukerAutoGodkjenn(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> Bool {
+        #if DEBUG
         tillatLive && valg.erDemo && argumenter.contains(autoGodkjenn)
+        #else
+        false
+        #endif
     }
 
     /// `godkjenn` eller `avslaa`, eller `nil`.
     public static func autoSvar(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> NaaSkjerm.Handling.Valg? {
+        #if DEBUG
         guard tillatLive, valg.erDemo, let a = argumenter.first(where: { $0.hasPrefix(autoSvarPrefiks) }) else { return nil }
         switch a.dropFirst(autoSvarPrefiks.count) {
         case "godkjenn": return .godkjenn
         case "avslaa": return .avslaa
         default: return nil
         }
+        #else
+        return nil
+        #endif
     }
 
     public static func brukerAutoBekreft(argumenter: [String], tillatLive: Bool, valg: KildeValg) -> Bool {
+        #if DEBUG
         tillatLive && valg.erDemo && argumenter.contains(autoBekreft)
+        #else
+        false
+        #endif
     }
 
     /// Kilden og skriveveien til «Nå», bygget sammen så de deler tilstand (demo: hva som er avgjort).
