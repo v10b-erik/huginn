@@ -31,6 +31,8 @@ targets:
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Ikonet (valg B, «Godkjenn»: hake i LCD-prikker; design/ikon/). Bare iOS-målet; macOS får eget ikon senere.
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         # Retning: iPhone låses til portrett. iPad må støtte alle fire for å slippe «All interface orientations must be
         # supported unless the app requires full screen» (multitasking/Split View). UIRequiresFullScreen ville tatt bort
         # Split View og Slide Over, og Apple avvikler det; alle fire er det riktige svaret. (_iPad må settes eksplisitt:
