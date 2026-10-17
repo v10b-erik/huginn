@@ -5,6 +5,8 @@ import AppCore
 /// «Koble fra» står for seg nederst med konsekvensen under, så den ikke ligner en ufarlig modusbytte.
 struct TilkoblingArk: View {
     var visning: ArkVisning
+    /// `abcdef…1234` (aldri hele tokenet), så du kan sammenligne med `kjerne-enhet list`. `nil` uten token eller tillatelse.
+    var pushEnhet: String? = nil
     var onKobleFra: () -> Void
     var onDemo: () -> Void
     var onKoble: () -> Void
@@ -32,6 +34,10 @@ struct TilkoblingArk: View {
             if let adresse = visning.adresse {
                 Band(etikett: "Adresse", verdi: adresse, etikettDempet: true, verdiMono: true)
                     .accessibilityIdentifier("tilkobling.adresse")
+            }
+            if let pushEnhet {
+                Band(etikett: "Push-enhet", verdi: pushEnhet, etikettDempet: true, verdiMono: true)
+                    .accessibilityIdentifier("tilkobling.pushEnhet")
             }
             if visning.kanBrukLagret { knapp("Bruk lagret tilkobling", id: "tilkobling.brukLagret", action: onBrukLagret) }
             if visning.kanKoble { knapp("Koble til trådflata", id: "tilkobling.koble", action: onKoble) }

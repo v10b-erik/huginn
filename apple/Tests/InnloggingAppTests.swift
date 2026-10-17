@@ -271,3 +271,50 @@ private actor Teller {
     private(set) var antall = 0
     func øk() { antall += 1 }
 }
+
+/// `onKoblet` (grunnlaget for varseltillatelsen): kalles bare etter en vellykket Kobling.
+@MainActor @Suite struct OnKobletTests {
+    private let token = "tok-0123456789abcdef0123"
+    private let adresse = "https://ygg.example:8444"
+
+    private func modell(_ lager: MinneLager = MinneLager(), teller: Box, bekreft: @escaping InnloggingModell.Bekreft = { _ in }) -> InnloggingModell {
+        let m = InnloggingModell(lager: lager, tillatHttpLoopback: false, bekreft: bekreft)
+        m.onKoblet = { teller.n += 1 }
+        m.start(argumenter: [], miljo: [:], tillatLive: false)
+        return m
+    }
+
+    final class Box { var n = 0 }
+
+    @Test func kallesEnGangEtterVellykketKobling() async {
+        let b = Box()
+        let m = modell(teller: b)
+        #expect(b.n == 0, "ikke ved oppstart")
+        await m.koble(adresse: adresse, token: token)
+        #expect(b.n == 1)
+    }
+
+    @Test func kallesIkkeVedFeilAvbruddUgyldigInndataOgDemo() async {
+        let b = Box()
+        let feilet = modell(teller: b) { _ in throw TilkoblingsFeil.ikkeInnlogget }
+        await feilet.koble(adresse: adresse, token: token)
+        let avbrutt = modell(teller: b) { _ in throw CancellationError() }
+        await avbrutt.koble(adresse: adresse, token: token)
+        let ugyldig = modell(teller: b)
+        await ugyldig.koble(adresse: adresse, token: "kort")
+        let demo = modell(teller: b)
+        demo.prøvDemo()
+        #expect(b.n == 0)
+    }
+
+    @Test func kallesIkkeVedBrukLagret() async {
+        let lager = MinneLager()
+        let først = Box()
+        let m1 = modell(lager, teller: først)
+        await m1.koble(adresse: adresse, token: token)
+        let b = Box()
+        let m2 = modell(lager, teller: b)
+        m2.brukLagret()
+        #expect(b.n == 0)
+    }
+}

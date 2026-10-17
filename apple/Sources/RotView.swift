@@ -82,6 +82,7 @@ struct RotView: View {
                     tilstand: modell.tilstand, kontakt: kontakt, harLagret: modell.innlogging.lagret != nil,
                     handlingsFeil: modell.innlogging.handlingsFeil
                 ),
+                pushEnhet: push.fingeravtrykk,
                 // Lukkes bare når frakoblingen faktisk gikk gjennom. Feiler den, blir arket stående og viser feilen.
                 onKobleFra: { if modell.kobleFra() { visArk = false } },
                 onDemo: { visArk = false; modell.prøvDemo() },

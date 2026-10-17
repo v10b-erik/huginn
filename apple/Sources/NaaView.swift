@@ -78,23 +78,30 @@ struct NaaView: View {
         // avgjør aldri noe.
         .task(id: push.rutetelling) {
             guard let id = push.rute else { return }
+            guard case .live = valg else { push.ruteBehandlet(); return }
             alleredeAvgjort = false
-            await modell.lastEtterSvar()
-            push.ruteBehandlet()
-            if modell.synligSkjerm?.godkjenninger.contains(where: { $0.id == id }) == true {
+            let lyktes = await modell.lastFerskt()
+            // Avbrutt av et nyere trykk: den oppgaven tar over, og denne konkluderer ingenting.
+            guard !Task.isCancelled else { return }
+            let ventende = modell.synligSkjerm?.godkjenninger.map(\.id)
+            switch PushRute.utfall(id: id, ventende: ventende, hentingLyktes: lyktes) {
+            case .fremhev:
+                push.ruteBehandlet()
                 withAnimation { proxy.scrollTo(id, anchor: .top) }
                 fremhevet = id
                 try? await Task.sleep(for: .seconds(4))
                 if fremhevet == id { fremhevet = nil }
-            } else if modell.feil == nil {
+            case .alleredeAvgjort:
+                push.ruteBehandlet()
                 alleredeAvgjort = true
+            case .ingentingEnnaa:
+                // Ingen frisk skjerm (feil eller avbrutt): konkluderer ikke. Feilbrikken viser feilen; ruten forkastes.
+                push.ruteBehandlet()
             }
         }
-        .onChange(of: modell.svar?.avgjorte ?? []) { gammel, ny in
-            for id in ny.subtracting(gammel) { push.kortAvgjort(id) }
-        }
-        .onChange(of: modell.skjerm?.godkjenninger.count) { _, n in
-            if n == 0 { push.ingenVenter() }
+        .onChange(of: modell.sisteKontakt) { _, _ in
+            guard case .live = valg, let s = modell.synligSkjerm else { return }
+            push.rydd(gjeldende: Set(s.godkjenninger.map(\.id)))
         }
         #if DEBUG
         // Synsløkken: `--scroll-venter` / `--scroll-traader` åpner med den brikken øverst (lange skjermer kan ikke

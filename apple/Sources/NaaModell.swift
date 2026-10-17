@@ -59,13 +59,20 @@ final class NaaModell {
 
     /// Henting etter et svar skal ikke hoppes over fordi en eldre henting pågår (den kan være sendt før svaret):
     /// vent på den, og hent så på nytt.
-    func lastEtterSvar() async {
+    func lastEtterSvar() async { _ = await lastFerskt() }
+
+    /// Som `lastEtterSvar`, men sier om en henting STARTET ETTER kallet faktisk lyktes (ikke avbrutt, ikke feilet, ikke
+    /// hoppet over fordi en eldre henting ikke ble ferdig).
+    func lastFerskt() async -> Bool {
         for _ in 0..<200 where henter { try? await Task.sleep(for: .milliseconds(25)) }
-        await last()
+        guard !henter, !Task.isCancelled else { return false }
+        return await last()
     }
 
-    func last() async {
-        guard !henter else { return }
+    /// `true` bare når henting lyktes og skjermen er ny.
+    @discardableResult
+    func last() async -> Bool {
+        guard !henter else { return false }
         henter = true
         defer { henter = false }
         do {
@@ -73,10 +80,12 @@ final class NaaModell {
             skjerm = ny
             sisteKontakt = Date()
             feil = nil
+            return true
         } catch {
             // En avbrutt henting (pull-to-refresh som slippes, visning som forsvinner) er ikke en feil.
-            if Task.isCancelled || (error as? URLError)?.code == .cancelled || error is CancellationError { return }
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled || error is CancellationError { return false }
             feil = NaaFeil.fra(error)
+            return false
         }
     }
 }

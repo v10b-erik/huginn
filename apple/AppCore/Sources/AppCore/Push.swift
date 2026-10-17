@@ -73,3 +73,29 @@ extension TraadflataKlient {
         }
     }
 }
+
+/// Skal appen spørre om varsler nå? Ren beslutning (testet), tatt når en live tilkobling står. En lagret live-tilkobling
+/// betyr at Kobling har skjedd; spør derfor bare når svaret ikke er gitt. Aldri for demo, aldri uten live kilde.
+public enum PushTillatelse {
+    public enum Status: Sendable, Equatable { case ikkeAvgjort, avslatt, tillatt, annet }
+
+    public static func skalSpoerre(status: Status, erLive: Bool, hoppOver: Bool) -> Bool {
+        erLive && !hoppOver && status == .ikkeAvgjort
+    }
+}
+
+extension PushRute {
+    /// Hva «Nå» skal gjøre etter et trykk på et godkjenningsvarsel. `ventende` er ider på kortene i skjermen, `nil` før noen
+    /// skjerm finnes. `hentingLyktes` er `true` bare når en henting STARTET ETTER trykket faktisk ga en ny skjerm.
+    /// «Allerede avgjort» konkluderes bare på ferske data; tom skjerm før første henting og hentefeil er «ingenting ennå».
+    public enum Utfall: Sendable, Equatable {
+        case fremhev(String)
+        case alleredeAvgjort
+        case ingentingEnnaa
+    }
+
+    public static func utfall(id: String, ventende: [String]?, hentingLyktes: Bool) -> Utfall {
+        guard hentingLyktes, let ventende else { return .ingentingEnnaa }
+        return ventende.contains(id) ? .fremhev(id) : .alleredeAvgjort
+    }
+}

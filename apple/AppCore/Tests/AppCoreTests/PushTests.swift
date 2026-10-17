@@ -109,3 +109,25 @@ import Testing
         #expect(StubURLProtocol.sett(host: hNett).count == 1)
     }
 }
+
+@Suite struct PushBeslutningTests {
+    @Test func tillatelseBareForLiveOgIkkeAvgjort() {
+        #expect(PushTillatelse.skalSpoerre(status: .ikkeAvgjort, erLive: true, hoppOver: false))
+        for s: PushTillatelse.Status in [.avslatt, .tillatt, .annet] {
+            #expect(!PushTillatelse.skalSpoerre(status: s, erLive: true, hoppOver: false))
+        }
+        #expect(!PushTillatelse.skalSpoerre(status: .ikkeAvgjort, erLive: false, hoppOver: false))
+        #expect(!PushTillatelse.skalSpoerre(status: .ikkeAvgjort, erLive: true, hoppOver: true))
+    }
+
+    @Test func rutebeslutning() {
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: ["kort-aaa", "x"], hentingLyktes: true) == .fremhev("kort-aaa"))
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: ["andre-1"], hentingLyktes: true) == .alleredeAvgjort)
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: [], hentingLyktes: true) == .alleredeAvgjort)
+        // Tom/ingen skjerm før første henting og hentefeil er aldri «avgjort».
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: nil, hentingLyktes: false) == .ingentingEnnaa)
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: nil, hentingLyktes: true) == .ingentingEnnaa)
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: [], hentingLyktes: false) == .ingentingEnnaa)
+        #expect(PushRute.utfall(id: "kort-aaa", ventende: ["kort-aaa"], hentingLyktes: false) == .ingentingEnnaa)
+    }
+}
