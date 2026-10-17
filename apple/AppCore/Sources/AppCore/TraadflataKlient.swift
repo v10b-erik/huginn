@@ -35,7 +35,7 @@ public enum SvarUtfall: Sendable, Equatable {
 public struct TraadflataKlient: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let baseURL: URL
     private let token: String
-    private let session: URLSession
+    let session: URLSession
 
     public init(baseURL: URL, token: String, session: URLSession = .shared) {
         self.baseURL = baseURL
@@ -148,7 +148,7 @@ public struct TraadflataKlient: Sendable, CustomStringConvertible, CustomDebugSt
         }
     }
 
-    private func forespørsel(_ sti: String, metode: String = "GET", kropp: Data? = nil) throws -> URLRequest {
+    func forespørsel(_ sti: String, metode: String = "GET", kropp: Data? = nil) throws -> URLRequest {
         guard var deler = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             throw TraadflataFeil.ugyldigSvar
         }
@@ -176,7 +176,7 @@ public struct TraadflataKlient: Sendable, CustomStringConvertible, CustomDebugSt
         }
     }
 
-    private static func feilmelding(_ data: Data) -> String? {
+    static func feilmelding(_ data: Data) -> String? {
         struct Svar: Decodable { var error: String? }
         return (try? JSONDecoder().decode(Svar.self, from: data))?.error
     }

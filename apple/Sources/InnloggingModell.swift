@@ -15,6 +15,8 @@ final class InnloggingModell {
     /// lageret, selv om bekreftelsen likevel kommer tilbake (nettverket respekterer ikke alltid avbrudd).
     private var forsøk = 0
     private var oppgave: Task<Void, Never>?
+    /// Kalles når en Kobling nettopp gikk gjennom (ikke ved start med lagret tilkobling). Brukes til å be om varsler.
+    var onKoblet: (() -> Void)?
 
     init(lager: any TilkoblingLager, tillatHttpLoopback: Bool, bekreft: @escaping Bekreft = { try await bekreftTilkobling($0) }) {
         innlogging = Innlogging(lager: lager, tillatHttpLoopback: tillatHttpLoopback)
@@ -43,6 +45,7 @@ final class InnloggingModell {
             try await bekreft(t)
             guard mitt == forsøk else { return }
             endre { $0.kobletOk(t) }
+            if case .koblet = tilstand { onKoblet?() }
         } catch let f as TilkoblingsFeil {
             guard mitt == forsøk else { return }
             endre { $0.kobletFeilet(f) }

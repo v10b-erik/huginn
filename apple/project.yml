@@ -23,11 +23,19 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - path: Sources
+        excludes: ["**/*.entitlements"]
       - path: Resources
         excludes: ["**/*.md"]
     dependencies:
       - package: AppCore
+    # Push: aps-environment=development (Xcode setter production ved distribusjonseksport) + time-sensitive, så
+    # kjernens «kritisk» bryter gjennom Fokus. Bare iOS-målet; macOS er urørt. Filen genereres av XcodeGen.
+    entitlements:
+      path: Sources/App.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.usernotifications.time-sensitive: true
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
@@ -49,7 +57,8 @@ targets:
     type: application
     platform: macOS
     sources:
-      - Sources
+      - path: Sources
+        excludes: ["**/*.entitlements"]
       - path: Resources
         excludes: ["**/*.md"]
     dependencies:

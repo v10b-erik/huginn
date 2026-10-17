@@ -6,6 +6,7 @@ struct NaaView: View {
     @State private var modell: NaaModell
     /// Hvilken kilde dette er. DEBUG-argumentene for auto-svar virker bare når den er en demo.
     private let valg: KildeValg
+    private let push: PushKoordinator
     private let kildeNavn: String
     private let smaltKildeNavn: String
     private let onTilkobling: () -> Void
@@ -17,6 +18,9 @@ struct NaaView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     /// Bekreftelsen som vises. Egen tilstand (ikke utledet) så arket beholder innholdet mens det lukkes.
     @State private var ark: ArkData?
+    /// Push-trykk: kortet som fremheves en stund, og om det trykket pekte på et kort som ikke (lenger) venter.
+    @State private var fremhevet: String?
+    @State private var alleredeAvgjort = false
 
     /// - Parameters:
     ///   - tilgang: kilden og skriveveien (Godkjenn/Avslå) bygget sammen, så de deler tilstand (demo: hva som er avgjort).
@@ -24,7 +28,7 @@ struct NaaView: View {
     ///   - onTilkobling: statusbrikken åpner arket med vert, «Koble fra» og «Bytt til demo».
     ///   - onKobleTilPaaNytt: bare når du er koblet til live; gir 401-feilen en vei videre (nytt token).
     init(
-        tilgang: KildeValg.Tilgang, autentisering: (any Autentisering)?, valg: KildeValg, kildeNavn: String, smaltKildeNavn: String? = nil,
+        tilgang: KildeValg.Tilgang, autentisering: (any Autentisering)?, valg: KildeValg, push: PushKoordinator, kildeNavn: String, smaltKildeNavn: String? = nil,
         onTilkobling: @escaping () -> Void = {}, onKobleTilPaaNytt: (() -> Void)? = nil,
         onKontakt: @escaping (Kontakt) -> Void = { _ in }, onVelgFane: @escaping (Hovedfane) -> Void = { _ in }
     ) {
@@ -32,6 +36,7 @@ struct NaaView: View {
             kilde: tilgang.kilde, send: autentisering == nil ? nil : tilgang.send, autentisering: autentisering
         ))
         self.valg = valg
+        self.push = push
         self.kildeNavn = kildeNavn
         self.smaltKildeNavn = smaltKildeNavn ?? kildeNavn
         self.onTilkobling = onTilkobling
@@ -68,6 +73,28 @@ struct NaaView: View {
             .padding(.bottom, BunnView.luftUnder)
             .frame(maxWidth: Self.maksBredde)
             .frame(maxWidth: .infinity)
+        }
+        // Trykk på et godkjenningsvarsel: hent på nytt, så fremhev kortet. Finnes det ikke, er det avgjort. Åpner bare;
+        // avgjør aldri noe.
+        .task(id: push.rutetelling) {
+            guard let id = push.rute else { return }
+            alleredeAvgjort = false
+            await modell.lastEtterSvar()
+            push.ruteBehandlet()
+            if modell.synligSkjerm?.godkjenninger.contains(where: { $0.id == id }) == true {
+                withAnimation { proxy.scrollTo(id, anchor: .top) }
+                fremhevet = id
+                try? await Task.sleep(for: .seconds(4))
+                if fremhevet == id { fremhevet = nil }
+            } else if modell.feil == nil {
+                alleredeAvgjort = true
+            }
+        }
+        .onChange(of: modell.svar?.avgjorte ?? []) { gammel, ny in
+            for id in ny.subtracting(gammel) { push.kortAvgjort(id) }
+        }
+        .onChange(of: modell.skjerm?.godkjenninger.count) { _, n in
+            if n == 0 { push.ingenVenter() }
         }
         #if DEBUG
         // Synsløkken: `--scroll-venter` / `--scroll-traader` åpner med den brikken øverst (lange skjermer kan ikke
@@ -180,11 +207,19 @@ struct NaaView: View {
         }
         HeroView(visning: heroVisning, tittel: s.heroTittel, undertekst: s.heroUndertekst, tale: s.heroTale)
         svarRad
+        if alleredeAvgjort { alleredeAvgjortBrikke }
         ForEach(Array(s.godkjenninger.enumerated()), id: \.element.id) { i, g in
             GodkjenningBrikke(
                 godkjenning: g, onSvar: modell.svar == nil ? nil : { modell.velg($0) },
                 knapper: knapper(for: g), onOppdater: { Task { await modell.oppdaterEtterSvar() } }, idSuffiks: i == 0 ? "" : "-\(i + 1)"
             )
+            .overlay {
+                if fremhevet == g.id {
+                    RoundedRectangle(cornerRadius: Theme.Radius.brikke)
+                        .stroke(Color(Theme.palett(for: scheme).aksent), lineWidth: 2)
+                        .accessibilityHidden(true)
+                }
+            }
         }
         if !s.venter.isEmpty {
             Listebrikke(tittel: "Venter på deg", rader: s.venter, idPrefiks: "naaVenterListe")
@@ -225,6 +260,25 @@ struct NaaView: View {
             }
             .accessibilityIdentifier("naaNeste")
         }
+    }
+
+    /// Trykket pekte på et kort som ikke venter lenger. Nøytral (ikke feil): det er en rolig, vanlig utgang.
+    private var alleredeAvgjortBrikke: some View {
+        let p = Theme.palett(for: scheme)
+        return Brikke {
+            HStack(spacing: Theme.Avstand.s3) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Allerede avgjort").skrift(.tekst).foregroundStyle(Color(p.tekst))
+                    Text("Kortet venter ikke lenger.").skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                }
+                Spacer(minLength: Theme.Avstand.s2)
+                Button { alleredeAvgjort = false } label: { Text("Lukk").skrift(.knapp) }
+                    .buttonStyle(KnappStil(rolle: .stille))
+                    .accessibilityIdentifier("naaAlleredeAvgjortLukk")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("naaAlleredeAvgjort")
     }
 
     // MARK: Godkjenn/Avslå

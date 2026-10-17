@@ -4,6 +4,9 @@ import os
 
 @main
 struct HuginnApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
     @State private var modell: InnloggingModell
     private let forhandsvisning: RotView.Forhandsvisning
 
@@ -21,6 +24,8 @@ struct HuginnApp: App {
         let argumenter = ProcessInfo.processInfo.arguments
         // `http` mot loopback og DEBUG-miljøet (HUGINN_URL/HUGINN_TOKEN) er bare for DEBUG-bygg.
         let m = InnloggingModell(lager: KeychainLager(tillatHttpLoopback: debug), tillatHttpLoopback: debug)
+        // Tillatelsen spørres først etter en vellykket Kobling (ikke ved første oppstart).
+        m.onKoblet = { PushKoordinator.shared.beOmTillatelse() }
         m.start(argumenter: argumenter, miljo: ProcessInfo.processInfo.environment, tillatLive: debug)
         // Bare tilstandsnavnet, aldri tokenet (Tilkobling og KildeValg er redigert).
         let navn: String

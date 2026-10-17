@@ -59,7 +59,7 @@ final class NaaModell {
 
     /// Henting etter et svar skal ikke hoppes over fordi en eldre henting pågår (den kan være sendt før svaret):
     /// vent på den, og hent så på nytt.
-    private func lastEtterSvar() async {
+    func lastEtterSvar() async {
         for _ in 0..<200 where henter { try? await Task.sleep(for: .milliseconds(25)) }
         await last()
     }

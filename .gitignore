@@ -10,3 +10,4 @@ dist/
 
 # Eriks referansebilder (opphavsrett hos andre) — vises i galleriet, ikke i git
 design/utforskning/referanser/
+apple/Sources/App.entitlements

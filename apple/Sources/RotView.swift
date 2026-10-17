@@ -10,6 +10,7 @@ struct RotView: View {
     @State private var fane = Hovedfane.start(argumenter: ProcessInfo.processInfo.arguments)
     @State private var traaderBesokt = Hovedfane.start(argumenter: ProcessInfo.processInfo.arguments) == .traader
     private let forhandsvisning: Forhandsvisning
+    private let push = PushKoordinator.shared
 
     /// Synsløkka (bare DEBUG): forhåndsutfyll feltene og send, med falske verdier, slik at skjermbilder av
     /// feil og «Kobler til» går gjennom den ekte veien. I release er dette alltid tomt.
@@ -66,6 +67,14 @@ struct RotView: View {
                 // og autentisering.
                 naa(valg: .demo(rolig: rolig, ekte: ekte), nyttToken: nil)
             }
+        }
+        // Push: live tilkobling gir token-registrering; demo og frakoblet gir ingenting. Trykk på et varsel åpner «Nå».
+        .task(id: modell.generasjon) {
+            if case .koblet(let t) = modell.tilstand { push.bruk(valg: t.kildeValg) } else { push.bruk(valg: nil) }
+        }
+        .onChange(of: push.rutetelling) { _, _ in
+            fane = .naa
+            visArk = false
         }
         .sheet(isPresented: $visArk) {
             TilkoblingArk(
@@ -133,7 +142,7 @@ struct RotView: View {
         let tilgang = valg.lagTilgang(demo: demo, demoTraader: demoTraader)
         return ZStack {
             NaaView(
-                tilgang: tilgang, autentisering: velgAutentisering(argumenter: argumenter, valg: valg), valg: valg,
+                tilgang: tilgang, autentisering: velgAutentisering(argumenter: argumenter, valg: valg), valg: valg, push: push,
                 kildeNavn: fot.full, smaltKildeNavn: fot.smal,
                 onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
                 onKontakt: { kontakt = $0 }, onVelgFane: velgFane
