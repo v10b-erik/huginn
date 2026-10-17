@@ -53,6 +53,10 @@ struct TraaderView: View {
             .frame(maxWidth: .infinity)
         }
         .refreshable { await modell.last() }
+        #if DEBUG
+        // Synsløkka: `--scroll-bunn` åpner nederst, så siste rad kan fotograferes mot fanelinja.
+        .defaultScrollAnchor(ProcessInfo.processInfo.arguments.contains("--scroll-bunn") ? .bottom : .top)
+        #endif
         .background(Bakgrunn())
         .safeAreaInset(edge: .bottom, spacing: 0) {
             BunnView(valgt: .traader, onVelg: onVelgFane, kildeNavn: kildeNavn, smaltKildeNavn: smaltKildeNavn)
