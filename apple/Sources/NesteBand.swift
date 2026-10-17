@@ -29,7 +29,7 @@ struct NesteBand: View {
                         .frame(width: etikettBredde, alignment: .leading)
                     Text(neste.tittel).skrift(.tekst).foregroundStyle(Color(p.tekst)).lineLimit(1)
                     Spacer(minLength: Theme.Avstand.s2)
-                    Text(neste.tid).skrift(.tid).foregroundStyle(Color(p.dempet)).lineLimit(1)
+                    Text(neste.tid).skrift(.tid).foregroundStyle(Color(p.dempet)).lineLimit(1).layoutPriority(1)
                 }
             }
         }

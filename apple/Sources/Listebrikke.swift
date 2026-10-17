@@ -68,7 +68,7 @@ struct Listebrikke: View {
         if typeSize.isAccessibilitySize, hoyre != nil {
             VStack(alignment: .leading, spacing: Theme.Avstand.s1) {
                 Text(tittel).skrift(.etikett).foregroundStyle(Color(p.dempet))
-                if let hoyre { Text(hoyre).skrift(.tid).foregroundStyle(Color(p.dempet)) }
+                if let hoyre { Text(hoyre.medHardeMellomrom).skrift(.tid).foregroundStyle(Color(p.dempet)) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else {
@@ -171,7 +171,8 @@ private struct RadView: View {
     }
 
     private func tekst(_ p: Theme.Palette) -> some View {
-        // Fra AX-størrelsene kuttes ingenting i rader som sier det (`brytFritt`); ellers kuttes etter radens egne linjetall.
+        // Fra AX-størrelsene kuttes ingenting (titler og undertekster brekker fritt); ellers kuttes etter reglene under.
+        // `brytFritt` brukes ikke lenger her.
         let fritt = typeSize.isAccessibilitySize
         // `rad.tittelLinjer` (AppCore) er DØDT i view-laget siden bruddregelen: alle titler har 2 linjer utenfor AX. Beholdt i
         // datamodellen (AppCore holdes urørt), bortsett fra at skjelettet fortsatt setter den.

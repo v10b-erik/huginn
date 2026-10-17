@@ -13,3 +13,8 @@ extension String {
         return ut
     }
 }
+
+extension String {
+    /// Hardt mellomrom rundt « · », så midtprikken aldri blir stående alene på en linje ved AX. Bare for visning.
+    var medHardeMellomrom: String { replacingOccurrences(of: " · ", with: "\u{00A0}·\u{00A0}") }
+}
