@@ -516,7 +516,7 @@ import Testing
         #expect(s.traader[0].pågår, "pågår tegnes som ring")
         let kol = s.kolonner[1]
         #expect(kol.tittel == "Tråder" && kol.verdi == 1)
-        #expect(kol.tekst == "ingen blokkert")
+        #expect(kol.tekst == "ingen venter")
     }
 
     @Test func opptattUtenHolderTellerSomIGang() {
@@ -564,7 +564,7 @@ import Testing
         let kort = NaaKort(id: "k", status: "pending", threadKey: "tg:-100123:7")
         let s = NaaSkjerm(naa: Naa(kort: [kort]), traader: [t], nå: nå, kalender: k)
         #expect(s.traader[0].ord == nil)
-        #expect(s.kolonner[1].tekst == "ingen blokkert")
+        #expect(s.kolonner[1].tekst == "ingen venter")
     }
 
     @Test func blokkertHarnessStatusGirVenter() {

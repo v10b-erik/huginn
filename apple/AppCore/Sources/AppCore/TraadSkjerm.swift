@@ -28,9 +28,12 @@ public struct TraadSkjerm: Sendable, Equatable {
     public var tomTekst: String { Self.tomTekstVanlig }
     public var kanVæreAvkortet: Bool { antall >= Self.serverGrense }
 
-    /// Overskriftstallet med enheten forklart: «6 · 30 D».
+    /// Overskriftstallet med enhet og vindu: «6 tråder · 30 d» («30 d» når antallet er ukjent).
     public var antallTekst: String { Self.antallTekst(antall) }
-    public static func antallTekst(_ n: Int) -> String { "\(n) · \(vinduDager) D" }
+    public static func antallTekst(_ n: Int?) -> String {
+        guard let n else { return "\(vinduDager) d" }  // ukjent antall: bare vinduet
+        return "\(n) \(n == 1 ? "tråd" : "tråder") · \(vinduDager) d"
+    }
     /// Toppetiketten, mono og versalt (viewet versaliserer). Vinduet («30 D») står bare i kortets tall.
     public static let toppEtikett = "Tråder"
 

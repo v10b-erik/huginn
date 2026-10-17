@@ -71,9 +71,11 @@ import Testing
         #expect(s.ovrige.map(\.tittel) == ["Ny", "Midt"])
         #expect(s.rader.map(\.tittel) == ["V ny", "V gammel", "Ny", "Midt"])
         #expect(s.statusTekst == "2 venter")
-        #expect(s.antallTekst == "4 · 30 D")
+        #expect(s.antallTekst == "4 tråder · 30 d")
         #expect(TraadSkjerm(traader: [], nå: nå).statusTekst == "Alt rolig")
-        #expect(TraadSkjerm(traader: [], nå: nå).antallTekst == "0 · 30 D")
+        #expect(TraadSkjerm(traader: [], nå: nå).antallTekst == "0 tråder · 30 d")
+        #expect(TraadSkjerm.antallTekst(1) == "1 tråd · 30 d")
+        #expect(TraadSkjerm.antallTekst(nil) == "30 d", "ukjent antall: bare vinduet")
     }
 
     @Test func likSistAktivAvgjøresAvIdOgErStabil() {

@@ -14,7 +14,9 @@ struct KolonneTall: View {
                 .skrift(.tall)
                 .monospacedDigit()
                 .foregroundStyle(kolonne.tone == .feil ? Color(p.feil) : Color(p.tekst))
-            Text(kolonne.tekst).skrift(.undertekst).foregroundStyle(Color(p.dempet)).lineLimit(1).minimumScaleFactor(0.8)
+            Text(kolonne.tekst).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                // Bildeteksten brytes ved behov, aldri kuttet eller skalert ned (den skal stå like stor som naboene).
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)

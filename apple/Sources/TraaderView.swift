@@ -137,12 +137,12 @@ struct TraaderView: View {
         } else if let f = modell.feil {
             // Ingen liste å vise: samme kort, uten tall (et 0 ville påstått at det ikke finnes tråder).
             Listebrikke(
-                tittel: "Siste aktivitet", hoyre: "– · \(TraadSkjerm.vinduDager) D", rader: [],
+                tittel: "Siste aktivitet", hoyre: TraadSkjerm.antallTekst(nil), rader: [],
                 tomTekst: f.kreverNyttToken ? "Koble til for å se trådene" : "Trådene kunne ikke hentes",
                 idPrefiks: "traaderListe"
             )
         } else {
-            Listebrikke(tittel: "Siste aktivitet", hoyre: "– · \(TraadSkjerm.vinduDager) D", rader: [], skjelett: true, idPrefiks: "traaderListe")
+            Listebrikke(tittel: "Siste aktivitet", hoyre: TraadSkjerm.antallTekst(nil), rader: [], skjelett: true, idPrefiks: "traaderListe")
                 .accessibilityIdentifier("traaderLaster")
         }
     }
@@ -172,7 +172,8 @@ private struct FeilBand: View {
             .foregroundStyle(utlogget ? Color(p.aksent) : Color(p.feil))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)
         let tekst = VStack(alignment: .leading, spacing: 1) {
-            Text(feil.tittel).skrift(.tekst).foregroundStyle(Color(p.tekst))
+            // Statusordet UTLOGGET står for tilstanden; tittelen sier hva det betyr for lista.
+            Text(utlogget ? "Trådene er låst" : feil.tittel).skrift(.tekst).foregroundStyle(Color(p.tekst))
             Text(feil.detalj).skrift(.tekst).foregroundStyle(Color(p.dempet))
         }
         VStack(alignment: .leading, spacing: Theme.Avstand.s3) {

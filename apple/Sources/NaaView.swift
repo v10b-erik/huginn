@@ -74,7 +74,7 @@ struct NaaView: View {
         // vises i ett bilde).
         .task {
             let args = ProcessInfo.processInfo.arguments
-            guard let mal = args.contains("--scroll-venter") ? "naaVenter" : (args.contains("--scroll-traader") ? "naaTraader" : nil) else { return }
+            guard let mal = args.contains("--scroll-venter") ? "naaVenter" : (args.contains("--scroll-traader") ? "naaTraader" : (args.contains("--scroll-tall") ? "naaTall" : nil)) else { return }
             try? await Task.sleep(for: .milliseconds(600))
             proxy.scrollTo(mal, anchor: .top)
         }
@@ -194,12 +194,20 @@ struct NaaView: View {
                 .id("naaVenter")
         }
         Brikke(padding: EdgeInsets(top: Theme.Avstand.s4, leading: Theme.Avstand.s5, bottom: Theme.Avstand.s4, trailing: Theme.Avstand.s5)) {
-            HStack(alignment: .top, spacing: Theme.Avstand.s4) {
-                ForEach(s.kolonner) { k in
-                    KolonneTall(kolonne: k).accessibilityIdentifier("naaKolonne-\(k.id)")
-                }
+            // Fra AX stables de tre målene som rader (tre smale kolonner ville kuttet bildeteksten).
+            let kolonner = ForEach(s.kolonner) { k in
+                KolonneTall(kolonne: k).accessibilityIdentifier("naaKolonne-\(k.id)")
+            }
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Theme.Avstand.s4) { kolonner }
+            } else {
+                HStack(alignment: .top, spacing: Theme.Avstand.s4) { kolonner }
             }
         }
+        #if DEBUG
+        .padding(.top, ProcessInfo.processInfo.arguments.contains("--scroll-tall") ? 56 : 0)  // under statuslinja i bildet
+        #endif
+        .id("naaTall")
         if !s.avvik.isEmpty {
             Listebrikke(tittel: "Avvik", rader: s.avvik, idPrefiks: "naaAvvikListe")
         }

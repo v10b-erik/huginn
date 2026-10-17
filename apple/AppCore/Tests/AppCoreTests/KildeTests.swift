@@ -46,7 +46,7 @@ import Testing
         #expect(s.heroUndertekst == "Ingenting venter på deg")
         #expect(s.godkjenninger.isEmpty && s.avvik.isEmpty && s.venter.isEmpty)
         #expect(s.kolonner.map(\.verdi) == [0, 3, 1])
-        #expect(s.kolonner[1].tekst == "ingen blokkert")
+        #expect(s.kolonner[1].tekst == "ingen venter")
         #expect(s.traader.map(\.ord) == ["PÅGÅR", nil, nil], "ingen venter, bare huginn pågår")
     }
 

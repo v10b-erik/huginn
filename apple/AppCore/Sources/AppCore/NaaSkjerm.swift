@@ -430,7 +430,7 @@ public struct NaaSkjerm: Sendable, Equatable {
     private static func traadKolonne(_ t: Traadutvalg) -> Kolonne {
         Kolonne(
             id: "traader", tittel: "Tråder", verdi: t.rader.count,
-            tone: .dempet, tekst: t.venter > 0 ? "\(t.venter) venter" : "ingen blokkert"
+            tone: .dempet, tekst: t.venter > 0 ? "\(t.venter) venter" : "ingen venter"
         )
     }
 
