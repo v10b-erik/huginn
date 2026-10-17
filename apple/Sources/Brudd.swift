@@ -15,6 +15,11 @@ extension String {
 }
 
 extension String {
-    /// Hardt mellomrom rundt « · », så midtprikken aldri blir stående alene på en linje ved AX. Bare for visning.
-    var medHardeMellomrom: String { replacingOccurrences(of: " · ", with: "\u{00A0}·\u{00A0}") }
+    /// «6 tråder · 30 d» brekker bare FØR midtprikken (aldri etter den, og aldri så «30» eller «d» blir en stubb): alt fra og
+    /// med « · » er sammenhengende med hardt mellomrom. Bare for visning.
+    var medHardeMellomrom: String {
+        guard let r = range(of: " · ") else { return self }
+        let hale = self[r.upperBound...].replacingOccurrences(of: " ", with: "\u{00A0}")
+        return String(self[..<r.lowerBound]) + " ·\u{00A0}" + hale
+    }
 }
