@@ -159,7 +159,8 @@ private struct RadView: View {
     private func tekst(_ p: Theme.Palette) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             // Én linje kuttes i MIDTEN (halen skiller navn fra hverandre); fra AX-størrelsene brekker tittelen i to.
-            let linjer = typeSize.isAccessibilitySize ? max(2, rad.tittelLinjer) : rad.tittelLinjer
+            // Fra AX-størrelsene kuttes ingenting: tittelen får brekke fritt (intet kuttet navn ved siden av en stor skrift).
+            let linjer: Int? = typeSize.isAccessibilitySize ? nil : rad.tittelLinjer
             Text(rad.tittel).skrift(.tekst)
                 .foregroundStyle(Color(p.tekst))
                 .lineLimit(linjer).truncationMode(linjer == 1 ? .middle : .tail)
@@ -167,7 +168,8 @@ private struct RadView: View {
                 // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN, så halen som
                 // skiller håndtak fra hverandre (`…-eksempel-12`) blir stående. Annen undertekst kuttes i halen.
                 Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
-                    .lineLimit(rad.undertekstLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+                    .lineLimit(typeSize.isAccessibilitySize && rad.undertekstLinjer > 1 ? nil : rad.undertekstLinjer)
+                    .truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
             }
         }
     }
