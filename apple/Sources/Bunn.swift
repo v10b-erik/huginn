@@ -31,11 +31,12 @@ struct BunnView: View {
                 LinearGradient(colors: [Color(p.flateBunn).opacity(0), Color(p.flateBunn)], startPoint: .top, endPoint: .bottom)
                     .frame(height: Self.overgang)
                     .offset(y: -Self.overgang)
+                    // Overgangen ligger UTENFOR bunnens ramme (offset): uten dette fanger den berøringer over fanene
+                    // (Godkjenn, rulledrag). BARE overgangen: den heldekkende flaten over skal fortsatt fange trykk, ellers
+                    // går trykk i bunnens padding gjennom til et kort som er rullet inn bak (funnet i review runde 3).
+                    .allowsHitTesting(false)
             }
             .ignoresSafeArea(edges: .bottom)
-            // Overgangen ligger UTENFOR bunnens ramme (offset): uten dette fanger den berøringer over fanene
-            // (Godkjenn, rulledrag).
-            .allowsHitTesting(false)
         }
     }
 
