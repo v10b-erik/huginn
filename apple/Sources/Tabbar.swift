@@ -18,7 +18,10 @@ struct Tabbar: View {
 
     var body: some View {
         let p = Theme.palett(for: scheme)
-        HStack(spacing: Theme.Avstand.s2) {
+        let indre = Theme.Radius.knapp - Self.innrykk  // konsentrisk med panelet, og lik `chip` (14)
+        // ÉN glassflate med fanene inni (ikke to knapper side om side, som leses som et handlingspar). Valgt fane er
+        // tonet og aldri fylt (regel 2), uten egen skygge; ikke-valgt har ingen flate i det hele tatt.
+        HStack(spacing: Theme.Avstand.s1) {
             ForEach(Hovedfane.allCases) { fane in
                 let erValgt = fane == valgt
                 Button { onVelg(fane) } label: {
@@ -27,8 +30,14 @@ struct Tabbar: View {
                         .foregroundStyle(Color(Self.tekstfarge(valgt: erValgt, palett: p)))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Maal.tab)
-                        .glassFlate(radius: Theme.Radius.knapp, variant: erValgt ? .valgt : .glass)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Maal.tab - 2 * Self.innrykk)
+                        .background {
+                            if erValgt {
+                                let form = RoundedRectangle(cornerRadius: indre, style: .continuous)
+                                form.fill(LinearGradient(colors: [Color(p.aksentTone), Color(p.krever2)], startPoint: .top, endPoint: .bottom))
+                                    .overlay(form.strokeBorder(Color(p.aksentKant), lineWidth: 1))
+                            }
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -37,5 +46,9 @@ struct Tabbar: View {
                 .accessibilityAddTraits(erValgt ? [.isSelected] : [])
             }
         }
+        .padding(Self.innrykk)
+        .glassFlate(radius: Theme.Radius.knapp)
     }
+
+    private static let innrykk: Double = 4
 }

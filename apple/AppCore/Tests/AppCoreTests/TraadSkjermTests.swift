@@ -16,8 +16,10 @@ import Testing
             Traad(id: "f", tittel: "F", sistAktiv: min(6), arkivert: min(5)),
             Traad(id: "g", tittel: "G", sistAktiv: min(7), live: TraadLive(opptatt: true)),
         ], nå: nå)
-        #expect(s.rader.map(\.ord) == ["PÅGÅR", "VENTER", "ÅPEN", "PARKERT", "PARKERT", "ARKIVERT", "PÅGÅR"])
+        // VENTER festes øverst; resten nyeste først.
+        #expect(s.rader.map(\.ord) == ["VENTER", "PÅGÅR", "ÅPEN", "PARKERT", "PARKERT", "ARKIVERT", "PÅGÅR"])
         #expect(s.rader.map(\.tone) == [.aksent, .aksent, .dempet, .dempet, .dempet, .dempet, .aksent])
+        #expect(s.rader.map(\.pågår) == [false, true, false, false, false, false, true], "bare PÅGÅR tegnes som ring")
         #expect(s.rader.allSatisfy { $0.ord != nil }, "tilstand er alltid et ord, aldri bare farge")
     }
 
@@ -40,7 +42,7 @@ import Testing
             Traad(id: "c", tittel: "C", sistAktiv: min(3), holder: TraadHolder(type: .ukjent("ny-type"), aktiv: true), ko: 0),
             Traad(id: "d", tittel: "D", sistAktiv: min(4), holder: TraadHolder(type: .plattform, aktiv: false), prosjekt: TraadProsjekt(label: "")),
         ], nå: nå)
-        #expect(s.rader[0].undertekst == "00.00 eksempel · 2 i kø")
+        #expect(s.rader[0].undertekst == "00.00 eksempel ·\u{00A0}2\u{00A0}i\u{00A0}kø", "«· N i kø» er ett udelelig ledd (hardt mellomrom)")
         #expect(s.rader[1].undertekst == nil)
         #expect(s.rader[2].undertekst == nil)
         #expect(s.rader[2].talesTekst.contains("ny-type"))
@@ -54,6 +56,46 @@ import Testing
         ], nå: nå)
         #expect(s.rader[1].talesTekst == "Eksempel, pågår, plattform, 1 i kø, sist aktiv for 8 minutter siden")
         #expect(s.rader[0].talesTekst == "Nå-tråd, parkert, sist aktiv nå")
+    }
+
+    @Test func venterFestesØverstOgRestenErNyesteFørst() {
+        let s = TraadSkjerm(traader: [
+            Traad(id: "ny", tittel: "Ny", sistAktiv: min(1)),
+            Traad(id: "v-gammel", tittel: "V gammel", sistAktiv: min(500), holder: TraadHolder(type: .terminal, status: "blocked", aktiv: true)),
+            Traad(id: "midt", tittel: "Midt", sistAktiv: min(30)),
+            Traad(id: "v-ny", tittel: "V ny", sistAktiv: min(20), holder: TraadHolder(type: .terminal, status: "blocked", aktiv: true)),
+        ], nå: nå)
+        #expect(s.venter.map(\.tittel) == ["V ny", "V gammel"])
+        #expect(s.ovrige.map(\.tittel) == ["Ny", "Midt"])
+        #expect(s.rader.map(\.tittel) == ["V ny", "V gammel", "Ny", "Midt"])
+        #expect(s.statusTekst == "2 venter")
+        #expect(s.antallTekst == "4 · 30 D")
+        #expect(TraadSkjerm(traader: [], nå: nå).statusTekst == "Alt rolig")
+        #expect(TraadSkjerm(traader: [], nå: nå).antallTekst == "0 · 30 D")
+    }
+
+    @Test func likSistAktivAvgjøresAvIdOgErStabil() {
+        let t = min(5)
+        let a = [Traad(id: "a", tittel: "A", sistAktiv: t), Traad(id: "c", tittel: "C", sistAktiv: t), Traad(id: "b", tittel: "B", sistAktiv: t)]
+        let ut = TraadSkjerm(traader: a, nå: nå).rader.map(\.id)
+        #expect(ut == ["a", "b", "c"], "lik tid: id stigende, så rekkefølgen er stabil")
+        #expect(TraadSkjerm(traader: a.reversed(), nå: nå).rader.map(\.id) == ut, "samme rekkefølge uansett inndata")
+    }
+
+    @Test func blokkertOgOpptattErVenterOgArkivertVenterAldri() {
+        let s = TraadSkjerm(traader: [
+            Traad(id: "a", tittel: "A", sistAktiv: min(1), holder: TraadHolder(type: .terminal, status: "blocked", aktiv: true), live: TraadLive(opptatt: true)),
+            Traad(id: "b", tittel: "B", sistAktiv: min(2), holder: TraadHolder(type: .terminal, status: "blocked", aktiv: true), arkivert: min(1)),
+        ], nå: nå)
+        #expect(s.rader.map(\.ord) == ["VENTER", "ARKIVERT"])
+        #expect(s.venter.count == 1)
+        #expect(s.rader[0].pågår == false)
+    }
+
+    @Test func friskhetGjelderEtterSekstiSekunder() {
+        #expect(TraadSkjerm.erGammel(sistHentet: nil, nå: nå))
+        #expect(!TraadSkjerm.erGammel(sistHentet: nå.addingTimeInterval(-60), nå: nå))
+        #expect(TraadSkjerm.erGammel(sistHentet: nå.addingTimeInterval(-61), nå: nå))
     }
 
     @Test func tomListeErEnEgenTilstandMedAvgrensningenSagt() {

@@ -177,7 +177,8 @@ struct KnappStil: ButtonStyle {
     /// `stille`: ingen flate, bare dempet tekst (f.eks. «Prøv demo»); minst like høy som de andre (berøringsmål).
     /// `deaktivert`: en handling som ennå ikke kan brukes. Bæres av FORM (ingen fyll, ingen lyskant, bare en strek),
     /// med dempet tekst i full dekkevne (aldri en blek utgave av den aktive).
-    enum Rolle { case handling, sekundar, stille, deaktivert }
+    /// `omriss`: bare en strek og tekstfarge, uten fyll og uten skygge: for en knapp INNE i en glassflate (ett løftnivå).
+    enum Rolle { case handling, sekundar, stille, deaktivert, omriss }
     var rolle: Rolle
     @Environment(\.colorScheme) private var scheme
 
@@ -202,7 +203,7 @@ struct KnappStil: ButtonStyle {
                     Color.clear.glassFlate(radius: Theme.Radius.knapp)
                 case .stille:
                     Color.clear
-                case .deaktivert:
+                case .deaktivert, .omriss:
                     form.strokeBorder(Color(p.kant), lineWidth: 1)
                 }
             }

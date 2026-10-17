@@ -89,6 +89,18 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var undertekstLinjer: Int = 2
         /// Overstyrer VoiceOver-teksten. `nil` = tittel, undertekst, tilstandsord og tid i den rekkefølgen.
         public var tale: String?
+        /// Noe pågår (identitet regel 2): lampen tegnes som RING (strek), ikke fylt. Fylt lampe = du må handle.
+        public var pågår: Bool = false
+        /// Hvor mange linjer tittelen får (kuttes i midten ved 1, så halen som skiller navn blir stående).
+        public var tittelLinjer: Int = 2
+
+        public init(
+            id: String, tittel: String, undertekst: String? = nil, ord: String? = nil, tid: String? = nil, tone: Tone,
+            undertekstLinjer: Int = 2, tale: String? = nil, pågår: Bool = false, tittelLinjer: Int = 2
+        ) {
+            self.id = id; self.tittel = tittel; self.undertekst = undertekst; self.ord = ord; self.tid = tid; self.tone = tone
+            self.undertekstLinjer = undertekstLinjer; self.tale = tale; self.pågår = pågår; self.tittelLinjer = tittelLinjer
+        }
 
         /// Det VoiceOver leser opp.
         public var talesTekst: String {
@@ -387,7 +399,7 @@ public struct NaaSkjerm: Sendable, Equatable {
             let pågår = t.live?.opptatt == true || t.holder?.status?.lowercased() == "working"
             return Rad(
                 id: t.id, tittel: t.tittel, undertekst: nil, ord: pågår ? "PÅGÅR" : nil,
-                tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: pågår ? .aksent : .dempet
+                tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: pågår ? .aksent : .dempet, pågår: pågår
             )
         }
         return Traadutvalg(rader: rader, venter: valgt.filter(venter).count)

@@ -102,6 +102,43 @@ import AppCore
     }
 }
 
+@MainActor @Suite struct TraaderModellAvbruddOgFriskhetTests {
+    private struct Avbrutt: TraadKilde {
+        func hent() async throws -> TraadSkjerm { throw CancellationError() }
+    }
+    private struct URLAvbrutt: TraadKilde {
+        func hent() async throws -> TraadSkjerm { throw URLError(.cancelled) }
+    }
+    private struct Teller: TraadKilde {
+        let t = HentTeller()
+        func hent() async throws -> TraadSkjerm { _ = await t.neste(); return TraadSkjerm(traader: [], nå: Date()) }
+        func antall() async -> Int { await t.neste() - 1 }
+    }
+
+    @Test func avbruttHentingSetterIkkeFeil() async {
+        for kilde in [Avbrutt() as any TraadKilde, URLAvbrutt()] {
+            let m = TraaderModell(kilde: kilde)
+            await m.last()
+            #expect(m.feil == nil)
+            #expect(m.skjerm == nil)
+            #expect(m.sistHentet == nil)
+            #expect(!m.henter)
+        }
+    }
+
+    @Test func fanenHenterPåNyttBareNårForrigeHentingErGammel() async {
+        var klokke = Date(timeIntervalSince1970: 1_760_000_000)
+        let kilde = Teller()
+        let m = TraaderModell(kilde: kilde, nå: { klokke })
+        await m.lastHvisGammel()                    // aldri hentet: henter
+        klokke.addTimeInterval(30)
+        await m.lastHvisGammel()                    // 30 s: frisk, henter ikke
+        klokke.addTimeInterval(40)
+        await m.lastHvisGammel()                    // 70 s etter første: gammel, henter
+        #expect(await kilde.antall() == 2)
+    }
+}
+
 private actor HentTeller {
     private var n = 0
     func neste() -> Int { n += 1; return n }

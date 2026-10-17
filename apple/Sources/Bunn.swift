@@ -22,14 +22,21 @@ struct BunnView: View {
         .padding(.top, Theme.Avstand.s3)
         .padding(.bottom, Theme.Avstand.s2)
         .frame(maxWidth: .infinity)
-        .background(
-            // Heldekkende under tab-baren; en kort overgang over, så innholdet blekner i stedet for å kuttes.
-            LinearGradient(
-                stops: [.init(color: Color(p.flateBunn).opacity(0), location: 0), .init(color: Color(p.flateBunn), location: 0.14)],
-                startPoint: .top, endPoint: .bottom
-            )
-        )
+        .background(alignment: .top) {
+            // Heldekkende under tab-baren (ingen tekst skal kunne ligge lesbar bak den, heller ikke når fot og fane er høye
+            // i AX-størrelsene), og en FAST kort overgang over den, så innholdet blekner i stedet for å kuttes. Overgangen
+            // har fast høyde: som andel av en høy bunn ble den et bredt, gjennomsiktig belte.
+            ZStack(alignment: .top) {
+                Color(p.flateBunn)
+                LinearGradient(colors: [Color(p.flateBunn).opacity(0), Color(p.flateBunn)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Self.overgang)
+                    .offset(y: -Self.overgang)
+            }
+            .ignoresSafeArea(edges: .bottom)
+        }
     }
+
+    private static let overgang: CGFloat = 28
 
     /// «huginn bygg <sha> <klokkeslett>»: hvilken kode som kjører (identitet regel 9). Tiden er byggetidspunktet, ikke nå.
     /// `brytende`: tillatt å brekke til flere linjer (stablet fot); ellers én linje i sin naturlige bredde.

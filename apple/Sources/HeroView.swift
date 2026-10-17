@@ -119,12 +119,16 @@ struct StatusChip: View {
     var lampe: Kontakt.Lampe
     var tekst: String
     var etikett: String
+    /// Fylt aksentlampe uten å være ok/avvik: noe krever deg (f.eks. «2 venter» på Tråder).
+    var aksentLampe = false
+    var id = "naaStatusChip"
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s2) {
             switch lampe {
+            case .ingen where aksentLampe: Circle().fill(Color(p.aksent)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
             case .ok: Circle().fill(Color(p.ok)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
             case .avvik: Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
             case .ingen: EmptyView()
@@ -138,6 +142,6 @@ struct StatusChip: View {
         .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(etikett)
-        .accessibilityIdentifier("naaStatusChip")
+        .accessibilityIdentifier(id)
     }
 }

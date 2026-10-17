@@ -144,8 +144,8 @@ struct RotView: View {
             .accessibilityHidden(fane != .naa)
             if traaderBesokt {
                 TraaderView(
-                    kilde: tilgang.traader, kildeNavn: fot.full, smaltKildeNavn: fot.smal,
-                    onKobleTilPaaNytt: nyttToken, onVelgFane: velgFane
+                    kilde: tilgang.traader, kildeNavn: fot.full, smaltKildeNavn: fot.smal, erSynlig: fane == .traader,
+                    onTilkobling: { visArk = true }, onVelgFane: velgFane
                 )
                 .opacity(fane == .traader ? 1 : 0)
                 .allowsHitTesting(fane == .traader)

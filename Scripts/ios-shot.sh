@@ -11,15 +11,22 @@ UT="$1"; UTSEENDE="$2"; shift 2
 REMOTE="${REMOTE:-draupnir}"
 WT="$(wt_key)"
 VENT="${VENT:-3}"
+# Argumentene settes inn i en kommando som fjernskallet tolker på nytt: kvoter dem (`%q`), så mellomrom og tegn
+# som `;`, `$` og `"` blir verdier og ikke kommandoer.
+ARGS="$(printf '%q ' "$@")"
+# Tekststørrelse: STORRELSE=accessibility-extra-extra-extra-large (AX5) osv. Standard er `large`, og settes ALLTID,
+# så en AX-runde ikke lekker inn i neste bilde.
+STORRELSE="${STORRELSE:-large}"
 ssh -o LogLevel=ERROR "$REMOTE" "export PATH=/opt/homebrew/bin:\$PATH; set -e
   cd build/$WT
   UDID=\$(bash Scripts/wt-sim.sh $WT)
   xcrun simctl bootstatus \$UDID -b >/dev/null
   xcrun simctl status_bar \$UDID override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 >/dev/null 2>&1 || true
   xcrun simctl ui \$UDID appearance $([ "$UTSEENDE" = mork ] && echo dark || echo light)
+  xcrun simctl ui \$UDID content_size $(printf '%q' "$STORRELSE")
   xcrun simctl terminate \$UDID no.huginn.App >/dev/null 2>&1 || true
   xcrun simctl install \$UDID /tmp/dd-$WT/Build/Products/Debug-iphonesimulator/App.app
-  xcrun simctl launch \$UDID no.huginn.App $* >/dev/null
+  xcrun simctl launch \$UDID no.huginn.App $ARGS >/dev/null
   sleep $VENT
   xcrun simctl io \$UDID screenshot /tmp/shot-$WT.png >/dev/null 2>&1"
 scp -q -o LogLevel=ERROR "$REMOTE:/tmp/shot-$WT.png" "$UT"

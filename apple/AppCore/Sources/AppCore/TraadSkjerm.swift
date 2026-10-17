@@ -12,20 +12,54 @@ public struct TraadSkjerm: Sendable, Equatable {
     /// Standardvinduet serveren bruker uten `dager` (30 døgn).
     public static let tomTekstVanlig = "Ingen tråder de siste 30 dagene"
 
-    public var rader: [NaaSkjerm.Rad]
+    /// Vinduet serveren bruker (døgn). Står i toppetiketten («TRÅDER · 30 D») og forklarer overskriftstallet.
+    public static let vinduDager = 30
+    /// Etter så mange sekunder er en liste gammel nok til at den hentes på nytt når fanen blir synlig igjen.
+    public static let friskhetSekunder: TimeInterval = 60
 
+    /// Tråder som VENTER (`blocked`, ikke arkivert): festes øverst. Nyeste først, med `id` som avgjører ved lik tid.
+    public var venter: [NaaSkjerm.Rad]
+    /// Resten, nyeste først.
+    public var ovrige: [NaaSkjerm.Rad]
+
+    /// Alle rader i visningsrekkefølge: de som venter først.
+    public var rader: [NaaSkjerm.Rad] { venter + ovrige }
     public var antall: Int { rader.count }
     public var tomTekst: String { Self.tomTekstVanlig }
-    public var kanVæreAvkortet: Bool { rader.count >= Self.serverGrense }
+    public var kanVæreAvkortet: Bool { antall >= Self.serverGrense }
+
+    /// Overskriftstallet med enheten forklart: «6 · 30 D».
+    public var antallTekst: String { Self.antallTekst(antall) }
+    public static func antallTekst(_ n: Int) -> String { "\(n) · \(vinduDager) D" }
+    /// Toppetiketten, mono og versalt (viewet versaliserer): «Tråder · 30 d».
+    public static let toppEtikett = "Tråder · \(vinduDager) d"
+
+    /// Statusboksen øverst til høyre: hva som krever deg, ellers at alt er rolig.
+    public var statusTekst: String { venter.isEmpty ? "Alt rolig" : "\(venter.count) venter" }
+
+    /// Er en liste hentet `sist` for gammel til å stå (brukes når fanen blir synlig)? Ingen henting ennå = gammel.
+    public static func erGammel(sistHentet sist: Date?, nå: Date) -> Bool {
+        guard let sist else { return true }
+        return nå.timeIntervalSince(sist) > friskhetSekunder
+    }
 
     public init(traader: [Traad], nå: Date) {
-        rader = traader
-            .sorted { ($0.sistAktiv, $1.id) > ($1.sistAktiv, $0.id) }
-            .map { Self.rad($0, nå: nå) }
+        let sortert = traader.sorted { ($0.sistAktiv, $1.id) > ($1.sistAktiv, $0.id) }
+        venter = sortert.filter { Self.venter($0) }.map { Self.rad($0, nå: nå) }
+        ovrige = sortert.filter { !Self.venter($0) }.map { Self.rad($0, nå: nå) }
     }
+
+    /// En arkivert tråd venter aldri, selv om holderen sto blokkert da den ble arkivert (samme rekkefølge som `tilstand`).
+    static func venter(_ t: Traad) -> Bool { tilstand(t).ord == "VENTER" }
 
     /// Tilstanden som ord og tone. Samme lesing som «Nå» gjør av holderen: `working`/opptatt = pågår,
     /// `blocked` = står stille og venter, en aktiv holder uten arbeid = åpen, ellers parkert. Arkivert slår alt.
+    ///
+    /// MERK: Tråder ser IKKE kortkoblingen. «Nå» regner en tråd som venter også når et ventende kort har trådens
+    /// `threadKey` (Telegram-nøkkel eller oppgavenøkkel); her finnes bare `holder.status == blocked`. En tråd kan
+    /// derfor stå som VENTER på «Nå» og som PÅGÅR/ÅPEN her. Å lukke gapet krever kortene inn i Tråder-kilden, og
+    /// det er ikke gjort. `blocked` og `opptatt` samtidig gir VENTER (en blokkert tråd venter på deg, selv om den
+    /// er opptatt).
     static func tilstand(_ t: Traad) -> (ord: String, tone: NaaSkjerm.Tone) {
         if t.arkivert != nil { return ("ARKIVERT", .dempet) }
         let status = t.holder?.status?.lowercased()
@@ -48,14 +82,17 @@ public struct TraadSkjerm: Sendable, Equatable {
         let (ord, tone) = tilstand(t)
         let prosjekt = t.prosjekt?.label.flatMap { $0.isEmpty ? nil : $0 }
         let holder = holdertekst(t)
-        let ko = (t.ko ?? 0) > 0 ? "\(t.ko!) i kø" : nil
+        // Hardt mellomrom: «N i kø» er ett udelelig ledd, og brytes aldri midt i.
+        let ko = (t.ko ?? 0) > 0 ? "\(t.ko!)\u{00A0}i\u{00A0}kø" : nil
         // Holderen står bare i VoiceOver-teksten: en tredje del i undertekstlinja brøt i to linjer på smal skjerm.
-        let deler = [prosjekt, ko].compactMap { $0 }
-        let tale = ([t.tittel, ord.lowercased()] + [holder, ko].compactMap { $0 }
+        // Skilletegnet hører til leddet etter seg (hardt mellomrom), så en linjebrytning står FØR «·», aldri etter.
+        let deler = [prosjekt, ko.map { (prosjekt == nil ? "" : "·\u{00A0}") + $0 }].compactMap { $0 }
+        let tale = ([t.tittel, ord.lowercased()] + [holder, ko.map { $0.replacingOccurrences(of: "\u{00A0}", with: " ") }].compactMap { $0 }
             + ["sist aktiv " + Tid.relativTalt(fra: t.sistAktiv, til: nå)]).joined(separator: ", ")
         return NaaSkjerm.Rad(
-            id: t.id, tittel: t.tittel, undertekst: deler.isEmpty ? nil : deler.joined(separator: " · "),
-            ord: ord, tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: tone, tale: tale
+            id: t.id, tittel: t.tittel, undertekst: deler.isEmpty ? nil : deler.joined(separator: " "),
+            ord: ord, tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: tone, tale: tale,
+            pågår: ord == "PÅGÅR", tittelLinjer: 1
         )
     }
 }
