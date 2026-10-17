@@ -99,3 +99,14 @@ extension PushRute {
         return ventende.contains(id) ? .fremhev(id) : .alleredeAvgjort
     }
 }
+
+extension PushRute {
+    /// Hvilke leverte varsler som er foreldet: bare GODKJENNINGSVARSLER (gyldig `{type:"godkjenning", id}`) hvis kort ikke
+    /// finnes blant `gjeldende`. Alt annet (andre typer, ugyldig id, varsler uten `kjerne`, f.eks. kritiske) slettes aldri.
+    public static func foreldede(levert: [(identifier: String, userInfo: [AnyHashable: Any])], gjeldende: Set<String>) -> [String] {
+        levert.compactMap { n in
+            guard case .godkjenning(let id) = parse(userInfo: n.userInfo), !gjeldende.contains(id) else { return nil }
+            return n.identifier
+        }
+    }
+}

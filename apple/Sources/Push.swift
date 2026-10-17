@@ -31,7 +31,13 @@ final class PushKoordinator {
     }
 
     /// Til visning i arket: `abcdef…1234`, aldri hele tokenet. Tomt uten token eller uten gitt tillatelse.
-    var fingeravtrykk: String? { tillatt ? token?.fingeravtrykk : nil }
+    var fingeravtrykk: String? {
+        guard tillatt else { return nil }
+        #if DEBUG
+        if let visningsToken { return visningsToken.fingeravtrykk }
+        #endif
+        return token?.fingeravtrykk
+    }
     /// Kortet et trykk på et varsel vil åpne. Nullstilles av «Nå» når det er behandlet.
     private(set) var rute: String?
     /// Økes ved hvert trykk, så samme kort kan åpnes to ganger på rad.
@@ -39,6 +45,9 @@ final class PushKoordinator {
     private(set) var tillatt = false
 
     private var token: PushToken?
+    #if DEBUG
+    private var visningsToken: PushToken?
+    #endif
     private var klient: TraadflataKlient?
     private var sendtToken: PushToken?
     private var spoerrer = false
@@ -55,10 +64,13 @@ final class PushKoordinator {
         }
         klient = TraadflataKlient(baseURL: url, token: t)
         sendtToken = nil
+        // Push er bare iOS: macOS registrerer ikke, sender ikke token og viser aldri varseldialogen.
+        #if os(iOS)
         registrer()
         sendHvisKlart()
         // En lagret live-tilkobling betyr at Kobling har skjedd: spør hvis svaret ikke er gitt.
         Task { await spoerOmNodvendig() }
+        #endif
     }
 
     /// Etter vellykket Kobling (ikke ved oppstart). Samme vei som `bruk`: spør bare når svaret ikke er gitt.
@@ -91,7 +103,8 @@ final class PushKoordinator {
     #if DEBUG
     /// Synsløkka: et syntetisk token vises i tilkoblingsarket (`--demo-push-token`).
     func visSyntetiskToken() {
-        token = PushToken(hex: "abcdef" + String(repeating: "0", count: 54) + "1234")
+        // Egen visningsverdi: `token` er det som sendes til trådflata, og skal aldri være det falske.
+        visningsToken = PushToken(hex: "abcdef" + String(repeating: "0", count: 54) + "1234")
         tillatt = true
     }
     #endif
@@ -143,9 +156,9 @@ final class PushKoordinator {
 
     // MARK: - trykk og visning
 
-    func trykket(userInfo: [AnyHashable: Any]) {
+    func trykket(_ r: PushRute) {
         // Kan komme før tilkoblingen er klar (kaldstart); «Nå» avgjør om ruten gjelder (bare live kilde).
-        if case .godkjenning(let id) = PushRute.parse(userInfo: userInfo) {
+        if case .godkjenning(let id) = r {
             rute = id
             rutetelling += 1
         }
@@ -160,10 +173,9 @@ final class PushKoordinator {
         Task {
             let c = UNUserNotificationCenter.current()
             let levert = await c.deliveredNotifications()
-            let ider = levert.compactMap { n -> String? in
-                guard case .godkjenning(let id) = PushRute.parse(userInfo: n.request.content.userInfo), !gjeldende.contains(id) else { return nil }
-                return n.request.identifier
-            }
+            let ider = PushRute.foreldede(
+                levert: levert.map { ($0.request.identifier, $0.request.content.userInfo) }, gjeldende: gjeldende
+            )
             if !ider.isEmpty { c.removeDeliveredNotifications(withIdentifiers: ider) }
         }
     }
@@ -180,8 +192,9 @@ final class VarselDelegat: NSObject, UNUserNotificationCenterDelegate, @unchecke
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         // Bare standardhandlingen (trykk). Alt annet, inkludert dismiss, gjør ingenting.
         guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
-        let info = response.notification.request.content.userInfo
-        await MainActor.run { PushKoordinator.shared.trykket(userInfo: info) }
+        // Tolkes her (ikke-isolert): bare den Sendable ruten krysser inn i MainActor.
+        let r = PushRute.parse(userInfo: response.notification.request.content.userInfo)
+        await MainActor.run { PushKoordinator.shared.trykket(r) }
     }
 }
 

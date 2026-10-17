@@ -95,7 +95,8 @@ struct NaaView: View {
                 push.ruteBehandlet()
                 alleredeAvgjort = true
             case .ingentingEnnaa:
-                // Ingen frisk skjerm (feil eller avbrutt): konkluderer ikke. Feilbrikken viser feilen; ruten forkastes.
+                // Ingen frisk skjerm (hentefeil, avbrutt, eller ventetiden løp ut): konkluderer ikke, og ruten forkastes stille.
+                // Hentefeil vises av feilbrikken; ved utløpt ventetid står bare den gamle skjermen.
                 push.ruteBehandlet()
             }
         }

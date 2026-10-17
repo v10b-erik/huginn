@@ -131,3 +131,23 @@ import Testing
         #expect(PushRute.utfall(id: "kort-aaa", ventende: ["kort-aaa"], hentingLyktes: false) == .ingentingEnnaa)
     }
 }
+
+@Suite struct PushForeldedeTests {
+    private func g(_ id: String) -> [AnyHashable: Any] { ["kjerne": ["type": "godkjenning", "id": id]] }
+
+    @Test func barForeldedeGodkjenningsvarslerSlettes() {
+        let levert: [(identifier: String, userInfo: [AnyHashable: Any])] = [
+            ("a", g("kort-gjeldende")), ("b", g("kort-foreldet")),
+            ("c", ["kjerne": ["type": "kritisk", "id": "kort-foreldet"]]),
+            ("d", g("x")), ("e", ["aps": ["alert": "kritisk"]]), ("f", [:]),
+        ]
+        #expect(PushRute.foreldede(levert: levert, gjeldende: ["kort-gjeldende"]) == ["b"])
+    }
+
+    @Test func tomGjeldendeSletterBareGodkjenningsvarsler() {
+        let levert: [(identifier: String, userInfo: [AnyHashable: Any])] = [
+            ("a", g("kort-aaa")), ("c", ["kjerne": ["type": "kritisk", "id": "kort-aaa"]]), ("e", ["aps": [:]]), ("d", g("ugyldig!"))
+        ]
+        #expect(PushRute.foreldede(levert: levert, gjeldende: []) == ["a"])
+    }
+}
