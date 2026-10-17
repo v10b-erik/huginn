@@ -25,6 +25,16 @@ public enum Tid {
         return "\(s / 86_400) d"
     }
 
+    /// Til VoiceOver: «nå», «for 8 minutter siden», «for 1 time siden». Rundes ned, som `relativ`.
+    public static func relativTalt(fra: Date, til: Date) -> String {
+        let s = Int(til.timeIntervalSince(fra))
+        func enhet(_ n: Int, _ en: String, _ flere: String) -> String { "for \(n) \(n == 1 ? en : flere) siden" }
+        if s < 60 { return "nå" }
+        if s < 3600 { return enhet(s / 60, "minutt", "minutter") }
+        if s < 86_400 { return enhet(s / 3600, "time", "timer") }
+        return enhet(s / 86_400, "dag", "dager")
+    }
+
     /// «00:03:12». Negativt klippes til null.
     public static func klokke(sekunder: Int) -> String {
         let s = max(0, sekunder)

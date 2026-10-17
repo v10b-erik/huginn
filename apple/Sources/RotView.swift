@@ -6,6 +6,9 @@ struct RotView: View {
     @State var modell: InnloggingModell
     @State private var visArk = Forhandsvisning.visArkVedStart
     @State private var kontakt: Kontakt = .ukjent
+    /// Valgt fane. «Nå» bor alltid; «Tråder» bygges første gang den åpnes og beholdes etterpå (ingen ny henting ved hvert bytte).
+    @State private var fane = Hovedfane.start(argumenter: ProcessInfo.processInfo.arguments)
+    @State private var traaderBesokt = Hovedfane.start(argumenter: ProcessInfo.processInfo.arguments) == .traader
     private let forhandsvisning: Forhandsvisning
 
     /// Synsløkka (bare DEBUG): forhåndsutfyll feltene og send, med falske verdier, slik at skjermbilder av
@@ -103,6 +106,11 @@ struct RotView: View {
         )
     }
 
+    private func velgFane(_ ny: Hovedfane) {
+        if ny == .traader { traaderBesokt = true }
+        fane = ny
+    }
+
     private func naa(valg: KildeValg, nyttToken: (() -> Void)?) -> some View {
         #if DEBUG
         // Synsløkka: `--demo-vert=<host>` får en demo til å se ut som en live-kilde i foten.
@@ -117,13 +125,33 @@ struct RotView: View {
         #else
         let demo = KildeValg.demoAvgjort(argumenter: argumenter, tillatLive: false)
         #endif
-        return NaaView(
-            tilgang: valg.lagTilgang(demo: demo), autentisering: velgAutentisering(argumenter: argumenter, valg: valg), valg: valg,
-            kildeNavn: fot.full, smaltKildeNavn: fot.smal,
-            onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
-            onKontakt: { kontakt = $0 }
-        )
-        // Ny tilkobling = fersk modell og kilde (aldri det forrige tokenets data).
+        #if DEBUG
+        let demoTraader = KildeValg.demoTraader(argumenter: argumenter, tillatLive: true)
+        #else
+        let demoTraader = KildeValg.demoTraader(argumenter: argumenter, tillatLive: false)
+        #endif
+        let tilgang = valg.lagTilgang(demo: demo, demoTraader: demoTraader)
+        return ZStack {
+            NaaView(
+                tilgang: tilgang, autentisering: velgAutentisering(argumenter: argumenter, valg: valg), valg: valg,
+                kildeNavn: fot.full, smaltKildeNavn: fot.smal,
+                onTilkobling: { visArk = true }, onKobleTilPaaNytt: nyttToken,
+                onKontakt: { kontakt = $0 }, onVelgFane: velgFane
+            )
+            // Den skjulte skjermen er hverken synlig, trykkbar eller i VoiceOver.
+            .opacity(fane == .naa ? 1 : 0)
+            .allowsHitTesting(fane == .naa)
+            .accessibilityHidden(fane != .naa)
+            if traaderBesokt {
+                TraaderView(
+                    kilde: tilgang.traader, kildeNavn: fot.full, smaltKildeNavn: fot.smal,
+                    onKobleTilPaaNytt: nyttToken, onVelgFane: velgFane
+                )
+                .opacity(fane == .traader ? 1 : 0)
+                .allowsHitTesting(fane == .traader)
+                .accessibilityHidden(fane != .traader)
+            }
+        }
         .id(modell.generasjon)
     }
 }

@@ -160,18 +160,40 @@ public enum KildeValg: Equatable, Sendable, CustomStringConvertible, CustomDebug
     public struct Tilgang: Sendable {
         public var kilde: any NaaKilde
         public var send: SvarTjeneste.Send
+        /// «Tråder»-fanen: samme kilde (demo eller live) som «Nå», aldri en reserve for den andre.
+        public var traader: any TraadKilde
     }
 
-    public func lagTilgang(demo: DemoAvgjort = DemoAvgjort()) -> Tilgang {
+    /// `--demo-traader=<tom|feil|ikkeInnlogget|treg>` (synsløkka, bare DEBUG): hva demoens trådliste viser. Ellers `.noen`.
+    public static func demoTraader(argumenter: [String], tillatLive: Bool) -> DemoTraadKilde.Variant {
+        #if DEBUG
+        guard tillatLive, let a = argumenter.first(where: { $0.hasPrefix("--demo-traader=") }) else { return .noen }
+        switch a.dropFirst("--demo-traader=".count) {
+        case "tom": return .tom
+        case "feil": return .feil
+        case "ikkeInnlogget": return .ikkeInnlogget
+        case "treg": return .treg
+        default: return .noen
+        }
+        #else
+        return .noen
+        #endif
+    }
+
+    public func lagTilgang(demo: DemoAvgjort = DemoAvgjort(), demoTraader: DemoTraadKilde.Variant = .noen) -> Tilgang {
         switch self {
         case .demo(let rolig, let ekte):
             return Tilgang(
                 kilde: DemoKilde(variant: ekte ? .ekte : (rolig ? .rolig : .avvik), avgjort: demo),
-                send: { try await demo.svar(kortId: $0, key: $1) }
+                send: { try await demo.svar(kortId: $0, key: $1) },
+                traader: DemoTraadKilde(variant: demoTraader)
             )
         case .live(let url, let token):
             let klient = TraadflataKlient(baseURL: url, token: token)
-            return Tilgang(kilde: LiveKilde(klient: klient), send: { try await klient.svar(kortId: $0, key: $1) })
+            return Tilgang(
+                kilde: LiveKilde(klient: klient), send: { try await klient.svar(kortId: $0, key: $1) },
+                traader: LiveTraadKilde(klient: klient)
+            )
         }
     }
 
