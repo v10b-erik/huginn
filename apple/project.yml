@@ -31,6 +31,12 @@ targets:
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        # Retning: iPhone låses til portrett. iPad må støtte alle fire for å slippe «All interface orientations must be
+        # supported unless the app requires full screen» (multitasking/Split View). UIRequiresFullScreen ville tatt bort
+        # Split View og Slide Over, og Apple avvikler det; alle fire er det riktige svaret. (_iPad må settes eksplisitt:
+        # generert standard utelater opp-ned-portrett, og det er det som utløser advarselen.)
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         # Navnet på hjemskjermen er «Basic» (repo og produkt heter huginn; design-arbeidsflate §9). Bundle-ID og
         # PRODUCT_NAME er uendret, så provisjonering og eksisterende bygg ikke påvirkes.
         INFOPLIST_KEY_CFBundleDisplayName: "Basic"
