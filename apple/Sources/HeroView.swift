@@ -123,17 +123,22 @@ struct StatusChip: View {
     var aksentLampe = false
     var id = "naaStatusChip"
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(spacing: Theme.Avstand.s2) {
             switch lampe {
-            case .ingen where aksentLampe: Circle().fill(Color(p.aksent)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
-            case .ok: Circle().fill(Color(p.ok)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
-            case .avvik: Circle().fill(Color(p.feil)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+            case .ingen where aksentLampe: Circle().fill(Color(p.aksent)).frame(width: led, height: led)
+            case .ok: Circle().fill(Color(p.ok)).frame(width: led, height: led)
+            case .avvik: Circle().fill(Color(p.feil)).frame(width: led, height: led)
             case .ingen: EmptyView()
             }
-            Text(tekst).skrift(.etikett).foregroundStyle(Color(p.tekst)).lineLimit(1)
+            Text(tekst).skrift(.etikett).foregroundStyle(Color(p.tekst))
+                // Ordet skal aldri kuttes («PLAT…»): fra AX får det brekke til to linjer.
+                .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
         }
         .padding(.horizontal, Theme.Avstand.s3)
         .padding(.vertical, Theme.Avstand.s2)

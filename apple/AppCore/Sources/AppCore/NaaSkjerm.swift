@@ -93,18 +93,24 @@ public struct NaaSkjerm: Sendable, Equatable {
         public var pågår: Bool = false
         /// Hvor mange linjer tittelen får (kuttes i midten ved 1, så halen som skiller navn blir stående).
         public var tittelLinjer: Int = 2
+        /// En egen linje under underteksten (tråder: «2 i kø»), uten skilletegn, så en linjebrytning aldri kan starte en linje med «·».
+        public var tillegg: String? = nil
+        /// Fra AX-størrelsene kuttes ingenting i raden (tittel og undertekst får brekke fritt).
+        public var brytFritt: Bool = false
 
         public init(
             id: String, tittel: String, undertekst: String? = nil, ord: String? = nil, tid: String? = nil, tone: Tone,
-            undertekstLinjer: Int = 2, tale: String? = nil, pågår: Bool = false, tittelLinjer: Int = 2
+            undertekstLinjer: Int = 2, tale: String? = nil, pågår: Bool = false, tittelLinjer: Int = 2,
+            tillegg: String? = nil, brytFritt: Bool = false
         ) {
+            self.tillegg = tillegg; self.brytFritt = brytFritt
             self.id = id; self.tittel = tittel; self.undertekst = undertekst; self.ord = ord; self.tid = tid; self.tone = tone
             self.undertekstLinjer = undertekstLinjer; self.tale = tale; self.pågår = pågår; self.tittelLinjer = tittelLinjer
         }
 
         /// Det VoiceOver leser opp.
         public var talesTekst: String {
-            tale ?? [tittel, undertekst, ord?.lowercased(), tid].compactMap { $0 }.joined(separator: ", ")
+            tale ?? [tittel, undertekst, tillegg, ord?.lowercased(), tid].compactMap { $0 }.joined(separator: ", ")
         }
     }
 
@@ -424,7 +430,7 @@ public struct NaaSkjerm: Sendable, Equatable {
     private static func traadKolonne(_ t: Traadutvalg) -> Kolonne {
         Kolonne(
             id: "traader", tittel: "Tråder", verdi: t.rader.count,
-            tone: .dempet, tekst: t.venter > 0 ? "\(t.venter) venter" : "ingen venter"
+            tone: .dempet, tekst: t.venter > 0 ? "\(t.venter) venter" : "ingen blokkert"
         )
     }
 

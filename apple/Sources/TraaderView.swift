@@ -48,7 +48,7 @@ struct TraaderView: View {
             }
             .padding(.horizontal, Theme.Avstand.s4)
             .padding(.top, Theme.Avstand.s4)
-            .padding(.bottom, Theme.Avstand.s5)
+            .padding(.bottom, BunnView.luftUnder)
             .frame(maxWidth: Self.maksBredde)
             .frame(maxWidth: .infinity)
         }
@@ -86,6 +86,7 @@ struct TraaderView: View {
                     Spacer(minLength: Theme.Avstand.s3)
                     chip
                 }
+                .frame(minHeight: Theme.Maal.beroringMin)  // samme høyde med og uten boks: ingenting hopper
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,13 +96,14 @@ struct TraaderView: View {
 
     /// «N VENTER» (fylt aksentlampe: krever deg) / «ALT ROLIG» (grønn lampe) når vi har en liste; ellers tilstanden til
     /// selve hentingen. Boksen er et ORD (regel 4), og den er stille: ingen handling bak den.
-    private var chip: StatusChip {
+    /// Når et statuskort står på skjermen (feil/utlogget), er det kortet som bærer ordet og handlingen; boksen skjules
+    /// (ellers står UTLOGGET/FEILET to-tre ganger).
+    @ViewBuilder private var chip: some View {
+        if modell.feil == nil { statusBoks }
+    }
+
+    private var statusBoks: StatusChip {
         let id = "traaderStatusChip"
-        if let f = modell.feil {
-            return f.kreverNyttToken
-                ? StatusChip(lampe: .ingen, tekst: "Utlogget", etikett: "Utlogget", aksentLampe: true, id: id)
-                : StatusChip(lampe: .avvik, tekst: "Feilet", etikett: "Feilet", id: id)
-        }
         guard let s = modell.skjerm else { return StatusChip(lampe: .ingen, tekst: "Henter", etikett: "Henter", id: id) }
         return s.venter.isEmpty
             ? StatusChip(lampe: .ok, tekst: s.statusTekst, etikett: "Alt rolig", id: id)
@@ -158,12 +160,14 @@ private struct FeilBand: View {
     var henter: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
+    @ScaledMetric(relativeTo: .caption) private var lampeKolonne: CGFloat = 14
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         let utlogget = feil.kreverNyttToken
         let lampe = Circle().fill(utlogget ? Color(p.aksent) : Color(p.feil))
-            .frame(width: Theme.Maal.led, height: Theme.Maal.led).frame(width: 14, alignment: .leading)
+            .frame(width: led, height: led).frame(width: lampeKolonne, alignment: .leading)
         let ord = Text(utlogget ? "UTLOGGET" : "FEILET").skrift(.status)
             .foregroundStyle(utlogget ? Color(p.aksent) : Color(p.feil))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)

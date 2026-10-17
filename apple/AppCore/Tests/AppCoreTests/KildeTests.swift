@@ -31,6 +31,7 @@ import Testing
         #expect(s.traader.map(\.tittel) == ["kode:huginn", "cto", "kode:v10b:ajax-fix"])
         #expect(s.traader.map(\.tid) == ["8 min", "1 t", nil])
         #expect(s.traader.map(\.ord) == ["PÅGÅR", nil, "VENTER"])
+        #expect(s.traader.map(\.pågår) == [true, false, false], "ring = pågår; VENTER er fylt")
         #expect(s.kolonner[1].verdi == 3)
         #expect(s.kolonner[1].tekst == "1 venter")
         
@@ -45,7 +46,7 @@ import Testing
         #expect(s.heroUndertekst == "Ingenting venter på deg")
         #expect(s.godkjenninger.isEmpty && s.avvik.isEmpty && s.venter.isEmpty)
         #expect(s.kolonner.map(\.verdi) == [0, 3, 1])
-        #expect(s.kolonner[1].tekst == "ingen venter")
+        #expect(s.kolonner[1].tekst == "ingen blokkert")
         #expect(s.traader.map(\.ord) == ["PÅGÅR", nil, nil], "ingen venter, bare huginn pågår")
     }
 

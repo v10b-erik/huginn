@@ -33,15 +33,23 @@ struct BunnView: View {
                     .offset(y: -Self.overgang)
             }
             .ignoresSafeArea(edges: .bottom)
+            // Overgangen ligger UTENFOR bunnens ramme (offset): uten dette fanger den berøringer over fanene
+            // (Godkjenn, rulledrag).
+            .allowsHitTesting(false)
         }
     }
 
-    private static let overgang: CGFloat = 28
+    /// Høyden på den faste overgangen over bunnen. Skjermene legger `overgang + s2` under siste element, så det
+    /// scroller helt fri av overgangen.
+    static let overgang: CGFloat = 28
+    static var luftUnder: CGFloat { overgang + Theme.Avstand.s2 }
 
     /// «huginn bygg <sha> <klokkeslett>»: hvilken kode som kjører (identitet regel 9). Tiden er byggetidspunktet, ikke nå.
     /// `brytende`: tillatt å brekke til flere linjer (stablet fot); ellers én linje i sin naturlige bredde.
     private func versjonTekst(_ p: Theme.Palette, brytende: Bool) -> some View {
         Text("huginn bygg \(BuildInfo.version)").skrift(.fot).foregroundStyle(Color(p.dempet))
+            // Versjonslinja er en kontroll, ikke innhold: den vokser ikke forbi xxLarge (ved AX5 tok den tre linjer).
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .lineLimit(brytende ? nil : 1)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: brytende ? .infinity : nil, alignment: .leading)
@@ -50,6 +58,7 @@ struct BunnView: View {
 
     private func kildeTekst(_ tekst: String, _ p: Theme.Palette, naturlig: Bool = false) -> some View {
         Text(tekst).skrift(.fot).foregroundStyle(Color(p.dempet)).lineLimit(1).truncationMode(.middle)
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .fixedSize(horizontal: naturlig, vertical: true)
             .accessibilityLabel(kildeNavn)
             .accessibilityIdentifier("naaKilde")

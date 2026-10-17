@@ -40,6 +40,8 @@ struct Listebrikke: View {
 
                 if skjelett {
                     VStack(alignment: .leading, spacing: 0) {
+                        // Skjelettet starter med seksjonsetiketten, så første rad står der den står med «Venter på deg».
+                        Text("Venter på deg").skrift(.etikett).padding(.top, Theme.Avstand.s3)
                         ForEach(0..<3, id: \.self) { i in
                             if i > 0 { Rectangle().fill(Color(p.kant)).frame(height: 1) }
                             RadView(rad: Self.skjelettRad)
@@ -111,11 +113,15 @@ private struct RadView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     /// Tidskolonnen har fast bredde (og mono-tall), så tilstandsordene står høyrejustert mot samme kant.
     @ScaledMetric(relativeTo: .caption) private var tidBredde: CGFloat = 52
+    /// Lampen skalerer med teksten (diameter, strekbredde og kolonne), så den ikke blir en prikk ved siden av stor skrift.
+    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
+    @ScaledMetric(relativeTo: .caption) private var ring: CGFloat = 1.5
+    @ScaledMetric(relativeTo: .caption) private var lampeKolonne: CGFloat = 14
 
     var body: some View {
         let p = Theme.palett(for: scheme)
         HStack(alignment: .center, spacing: Theme.Avstand.s3) {
-            lampe(p).frame(width: 14, alignment: .leading)
+            lampe(p).frame(width: lampeKolonne, alignment: .leading)
             if typeSize.isAccessibilitySize {
                 // Tilgjengelighetsstørrelser: ord og tid ville tatt hele bredden og klemt teksten til noen få tegn.
                 // Da står de under teksten, venstrestilt: ordet først og aldri kuttet, og tiden brekker under ordet
@@ -149,27 +155,43 @@ private struct RadView: View {
     /// Lampen er FORM (identitet regel 2): fylt = du må handle (venter), ring = noe pågår, dempet fylt = ellers.
     @ViewBuilder private func lampe(_ p: Theme.Palette) -> some View {
         if rad.pågår {
-            Circle().strokeBorder(lampefarge(rad.tone, p), lineWidth: 1.5)
-                .frame(width: Theme.Maal.led, height: Theme.Maal.led)
+            Circle().strokeBorder(lampefarge(rad.tone, p), lineWidth: ring)
+                .frame(width: led, height: led)
         } else {
-            Circle().fill(lampefarge(rad.tone, p)).frame(width: Theme.Maal.led, height: Theme.Maal.led)
+            Circle().fill(lampefarge(rad.tone, p)).frame(width: led, height: led)
         }
     }
 
+    /// Brekkepunkter for AX: en nullbreddes mellomrom etter «:», «-», «/» og «_», så en lang tittel brekker ved skilletegnene
+    /// og ikke midt i et ord («eksempe/l-app»). Bare til visning; VoiceOver leser `talesTekst`.
+    private func brytbar(_ s: String) -> String {
+        guard typeSize.isAccessibilitySize else { return s }
+        var ut = ""
+        for ch in s {
+            ut.append(ch)
+            if ":-/_".contains(ch) { ut.append("\u{200B}") }
+        }
+        return ut
+    }
+
     private func tekst(_ p: Theme.Palette) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            // Én linje kuttes i MIDTEN (halen skiller navn fra hverandre); fra AX-størrelsene brekker tittelen i to.
-            // Fra AX-størrelsene kuttes ingenting: tittelen får brekke fritt (intet kuttet navn ved siden av en stor skrift).
-            let linjer: Int? = typeSize.isAccessibilitySize ? nil : rad.tittelLinjer
-            Text(rad.tittel).skrift(.tekst)
+        // Fra AX-størrelsene kuttes ingenting i rader som sier det (`brytFritt`); ellers kuttes etter radens egne linjetall.
+        let fritt = typeSize.isAccessibilitySize
+        let tittelLinjer: Int? = fritt ? nil : rad.tittelLinjer
+        let underLinjer: Int? = fritt && (rad.brytFritt || rad.undertekstLinjer > 1) ? nil : rad.undertekstLinjer
+        return VStack(alignment: .leading, spacing: 1) {
+            // Én linje kuttes i MIDTEN (halen skiller navn fra hverandre); fra AX-størrelsene brekker tittelen fritt.
+            Text(brytbar(rad.tittel)).skrift(.tekst)
                 .foregroundStyle(Color(p.tekst))
-                .lineLimit(linjer).truncationMode(linjer == 1 ? .middle : .tail)
+                .lineLimit(tittelLinjer).truncationMode(tittelLinjer == 1 ? .middle : .tail)
             if let u = rad.undertekst {
-                // Håndtaket på «venter»-rader er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN, så halen som
-                // skiller håndtak fra hverandre (`…-eksempel-12`) blir stående. Annen undertekst kuttes i halen.
-                Text(u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
-                    .lineLimit(typeSize.isAccessibilitySize && rad.undertekstLinjer > 1 ? nil : rad.undertekstLinjer)
-                    .truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+                // Håndtaket på «venter»-rader og prosjektet på tråder er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN,
+                // så halen som skiller håndtak fra hverandre (`…-eksempel-12`) blir stående.
+                Text(brytbar(u)).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                    .lineLimit(underLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+            }
+            if let t = rad.tillegg {
+                Text(t).skrift(.undertekst).foregroundStyle(Color(p.dempet)).lineLimit(1)
             }
         }
     }

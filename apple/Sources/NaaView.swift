@@ -14,6 +14,7 @@ struct NaaView: View {
     private let onVelgFane: (Hovedfane) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Bekreftelsen som vises. Egen tilstand (ikke utledet) så arket beholder innholdet mens det lukkes.
     @State private var ark: ArkData?
 
@@ -64,7 +65,7 @@ struct NaaView: View {
             }
             .padding(.horizontal, Theme.Avstand.s4)
             .padding(.top, Theme.Avstand.s4)
-            .padding(.bottom, Theme.Avstand.s4)
+            .padding(.bottom, BunnView.luftUnder)
             .frame(maxWidth: Self.maksBredde)
             .frame(maxWidth: .infinity)
         }
@@ -149,18 +150,24 @@ struct NaaView: View {
         return StatusChip(lampe: .ingen, tekst: "Henter", etikett: "Henter")
     }
 
-    private func topplinje(_ p: Theme.Palette) -> some View {
-        HStack {
-            Text(modell.skjerm?.topplinje ?? Tid.datolinje(nå: Date(), kalender: .current))
-                .skrift(.etikett).foregroundStyle(Color(p.tekst))
-                .accessibilityIdentifier("naaDato")
-            Spacer()
-            // Brikken er også veien til tilkoblingen; uten data (feil, første henting) står den uten lampe.
-            Button(action: onTilkobling) { chip }
-                .buttonStyle(.plain)
-                .accessibilityHint("Åpner tilkoblingen")
-                .accessibilityIdentifier("naaTilkoblingKnapp")
+    @ViewBuilder private func topplinje(_ p: Theme.Palette) -> some View {
+        let dato = Text(modell.skjerm?.topplinje ?? Tid.datolinje(nå: Date(), kalender: .current))
+            .skrift(.etikett).foregroundStyle(Color(p.tekst))
+            .accessibilityIdentifier("naaDato")
+        // Brikken er også veien til tilkoblingen; uten data (feil, første henting) står den uten lampe.
+        let knapp = Button(action: onTilkobling) { chip }
+            .buttonStyle(.plain)
+            .accessibilityHint("Åpner tilkoblingen")
+            .accessibilityIdentifier("naaTilkoblingKnapp")
+        Group {
+            if typeSize.isAccessibilitySize {
+                // Fra AX: brikken på egen linje under datoen, så ordet («OK») aldri kuttes (regel 4).
+                VStack(alignment: .leading, spacing: Theme.Avstand.s2) { dato; knapp }
+            } else {
+                HStack { dato; Spacer(); knapp }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.Avstand.s1)
         .padding(.bottom, Theme.Avstand.s1)
     }

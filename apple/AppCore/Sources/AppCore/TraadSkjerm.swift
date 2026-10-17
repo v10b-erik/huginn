@@ -31,8 +31,8 @@ public struct TraadSkjerm: Sendable, Equatable {
     /// Overskriftstallet med enheten forklart: «6 · 30 D».
     public var antallTekst: String { Self.antallTekst(antall) }
     public static func antallTekst(_ n: Int) -> String { "\(n) · \(vinduDager) D" }
-    /// Toppetiketten, mono og versalt (viewet versaliserer): «Tråder · 30 d».
-    public static let toppEtikett = "Tråder · \(vinduDager) d"
+    /// Toppetiketten, mono og versalt (viewet versaliserer). Vinduet («30 D») står bare i kortets tall.
+    public static let toppEtikett = "Tråder"
 
     /// Statusboksen øverst til høyre: hva som krever deg, ellers at alt er rolig.
     public var statusTekst: String { venter.isEmpty ? "Alt rolig" : "\(venter.count) venter" }
@@ -82,17 +82,16 @@ public struct TraadSkjerm: Sendable, Equatable {
         let (ord, tone) = tilstand(t)
         let prosjekt = t.prosjekt?.label.flatMap { $0.isEmpty ? nil : $0 }
         let holder = holdertekst(t)
-        // Hardt mellomrom: «N i kø» er ett udelelig ledd, og brytes aldri midt i.
-        let ko = (t.ko ?? 0) > 0 ? "\(t.ko!)\u{00A0}i\u{00A0}kø" : nil
         // Holderen står bare i VoiceOver-teksten: en tredje del i undertekstlinja brøt i to linjer på smal skjerm.
-        // Skilletegnet hører til leddet etter seg (hardt mellomrom), så en linjebrytning står FØR «·», aldri etter.
-        let deler = [prosjekt, ko.map { (prosjekt == nil ? "" : "·\u{00A0}") + $0 }].compactMap { $0 }
+        // «N i kø» står på en EGEN linje (ikke etter en «·»): en linjebrytning kan da aldri starte en linje med prikken,
+        // og «N i kø» er udelelig (hardt mellomrom).
+        let ko = (t.ko ?? 0) > 0 ? "\(t.ko!)\u{00A0}i\u{00A0}kø" : nil
         let tale = ([t.tittel, ord.lowercased()] + [holder, ko.map { $0.replacingOccurrences(of: "\u{00A0}", with: " ") }].compactMap { $0 }
             + ["sist aktiv " + Tid.relativTalt(fra: t.sistAktiv, til: nå)]).joined(separator: ", ")
         return NaaSkjerm.Rad(
-            id: t.id, tittel: t.tittel, undertekst: deler.isEmpty ? nil : deler.joined(separator: " "),
-            ord: ord, tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: tone, tale: tale,
-            pågår: ord == "PÅGÅR", tittelLinjer: 1
+            id: t.id, tittel: t.tittel, undertekst: prosjekt,
+            ord: ord, tid: Tid.relativ(fra: t.sistAktiv, til: nå), tone: tone, undertekstLinjer: 1, tale: tale,
+            pågår: ord == "PÅGÅR", tittelLinjer: 1, tillegg: ko, brytFritt: true
         )
     }
 }

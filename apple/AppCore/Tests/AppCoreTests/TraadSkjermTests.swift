@@ -42,7 +42,9 @@ import Testing
             Traad(id: "c", tittel: "C", sistAktiv: min(3), holder: TraadHolder(type: .ukjent("ny-type"), aktiv: true), ko: 0),
             Traad(id: "d", tittel: "D", sistAktiv: min(4), holder: TraadHolder(type: .plattform, aktiv: false), prosjekt: TraadProsjekt(label: "")),
         ], nå: nå)
-        #expect(s.rader[0].undertekst == "00.00 eksempel ·\u{00A0}2\u{00A0}i\u{00A0}kø", "«· N i kø» er ett udelelig ledd (hardt mellomrom)")
+        #expect(s.rader[0].undertekst == "00.00 eksempel")
+        #expect(s.rader[0].tillegg == "2\u{00A0}i\u{00A0}kø", "«N i kø» er en egen linje og udelelig (hardt mellomrom), aldri etter en «·»")
+        #expect(s.rader[0].brytFritt && s.rader[0].undertekstLinjer == 1)
         #expect(s.rader[1].undertekst == nil)
         #expect(s.rader[2].undertekst == nil)
         #expect(s.rader[2].talesTekst.contains("ny-type"))
