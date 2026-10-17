@@ -160,8 +160,10 @@ private struct FeilBand: View {
     var henter: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
-    @ScaledMetric(relativeTo: .caption) private var lampeKolonne: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption) private var ledSkalert: CGFloat = Theme.Maal.led
+    @ScaledMetric(relativeTo: .caption) private var kolonneSkalert: CGFloat = 14
+    private var led: CGFloat { min(ledSkalert, Theme.Maal.led * 1.5) }
+    private var lampeKolonne: CGFloat { min(kolonneSkalert, 14 * 1.5) }
 
     var body: some View {
         let p = Theme.palett(for: scheme)
