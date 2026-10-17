@@ -179,8 +179,9 @@ private struct FeilBand: View {
         VStack(alignment: .leading, spacing: Theme.Avstand.s3) {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: Theme.Avstand.s2) {
-                    HStack(spacing: Theme.Avstand.s3) { lampe; ord }
+                    // Status ETTER tittel (som i listeradene), ikke over.
                     tekst
+                    HStack(spacing: Theme.Avstand.s3) { lampe; ord }
                 }
             } else {
                 HStack(alignment: .center, spacing: Theme.Avstand.s3) {

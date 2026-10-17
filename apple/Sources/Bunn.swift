@@ -58,7 +58,7 @@ struct BunnView: View {
     }
 
     private func kildeTekst(_ tekst: String, _ p: Theme.Palette, naturlig: Bool = false) -> some View {
-        Text(tekst).skrift(.fot).foregroundStyle(Color(p.dempet)).lineLimit(1).truncationMode(.middle)
+        Text(tekst).skrift(.fot).foregroundStyle(Color(p.dempet)).lineLimit(1).truncationMode(.tail)
             .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .fixedSize(horizontal: naturlig, vertical: true)
             .accessibilityLabel(kildeNavn)
@@ -84,7 +84,12 @@ struct BunnView: View {
                     Spacer(minLength: 0)
                     kildeTekst(smaltKildeNavn, p, naturlig: true)
                 }
-                stablet(p)
+                // Siste utvei har SAMME høyde som de andre (én linje): sha står alltid helt, kilden kuttes bakerst.
+                HStack(spacing: Theme.Avstand.s3) {
+                    versjonTekst(p, brytende: false).fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    kildeTekst(smaltKildeNavn, p)
+                }
             }
         }
     }

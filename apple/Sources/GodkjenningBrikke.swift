@@ -43,8 +43,9 @@ struct GodkjenningBrikke: View {
                 }
                 // Brikken viser målet (første linje, maks tre linjer); HELE teksten står i bekreftelsen, som alltid kommer
                 // før noe kan sendes.
-                Text(forsteLinjeEllerTittel).skrift(.h2).foregroundStyle(Color(p.tekst))
+                Text(forsteLinjeEllerTittel.medMyktBrudd).skrift(.h2).foregroundStyle(Color(p.tekst))
                     .lineLimit(3)
+                    .accessibilityLabel(forsteLinjeEllerTittel)
                     .padding(.bottom, Theme.Avstand.s1)
                     .accessibilityAddTraits(.isHeader)
                 if let kilde = godkjenning.kilde {

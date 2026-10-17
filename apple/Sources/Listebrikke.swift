@@ -114,14 +114,22 @@ private struct RadView: View {
     /// Tidskolonnen har fast bredde (og mono-tall), så tilstandsordene står høyrejustert mot samme kant.
     @ScaledMetric(relativeTo: .caption) private var tidBredde: CGFloat = 52
     /// Lampen skalerer med teksten (diameter, strekbredde og kolonne), så den ikke blir en prikk ved siden av stor skrift.
-    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
-    @ScaledMetric(relativeTo: .caption) private var ring: CGFloat = 1.5
-    @ScaledMetric(relativeTo: .caption) private var lampeKolonne: CGFloat = 14
+    /// Taket er ~1,5× standard: ved AX5 skal lampen følge teksten litt, ikke bli en skive midt på raden.
+    @ScaledMetric(relativeTo: .caption) private var ledSkalert: CGFloat = Theme.Maal.led
+    @ScaledMetric(relativeTo: .caption) private var ringSkalert: CGFloat = 1.5
+    @ScaledMetric(relativeTo: .caption) private var kolonneSkalert: CGFloat = 14
+    /// Hvor langt over grunnlinja lampens midte skal stå i AX-oppsettet (omtrent halve x-høyden til tittelen).
+    @ScaledMetric(relativeTo: .body) private var lampeLoft: CGFloat = 4
+    private var led: CGFloat { min(ledSkalert, Theme.Maal.led * 1.5) }
+    private var ring: CGFloat { min(ringSkalert, 1.5 * 1.5) }
+    private var lampeKolonne: CGFloat { min(kolonneSkalert, 14 * 1.5) }
 
     var body: some View {
         let p = Theme.palett(for: scheme)
-        HStack(alignment: .center, spacing: Theme.Avstand.s3) {
+        // AX: lampen følger tittelens første tekstlinje, ikke radens midte.
+        HStack(alignment: typeSize.isAccessibilitySize ? .firstTextBaseline : .center, spacing: Theme.Avstand.s3) {
             lampe(p).frame(width: lampeKolonne, alignment: .leading)
+                .alignmentGuide(.firstTextBaseline) { d in d.height / 2 + lampeLoft }
             if typeSize.isAccessibilitySize {
                 // Tilgjengelighetsstørrelser: ord og tid ville tatt hele bredden og klemt teksten til noen få tegn.
                 // Da står de under teksten, venstrestilt: ordet først og aldri kuttet, og tiden brekker under ordet
@@ -162,32 +170,22 @@ private struct RadView: View {
         }
     }
 
-    /// Brekkepunkter for AX: en nullbreddes mellomrom etter «:», «-», «/» og «_», så en lang tittel brekker ved skilletegnene
-    /// og ikke midt i et ord («eksempe/l-app»). Bare til visning; VoiceOver leser `talesTekst`.
-    private func brytbar(_ s: String) -> String {
-        guard typeSize.isAccessibilitySize else { return s }
-        var ut = ""
-        for ch in s {
-            ut.append(ch)
-            if ":-/_".contains(ch) { ut.append("\u{200B}") }
-        }
-        return ut
-    }
-
     private func tekst(_ p: Theme.Palette) -> some View {
         // Fra AX-størrelsene kuttes ingenting i rader som sier det (`brytFritt`); ellers kuttes etter radens egne linjetall.
         let fritt = typeSize.isAccessibilitySize
-        let tittelLinjer: Int? = fritt ? nil : rad.tittelLinjer
+        let tittelLinjer: Int? = fritt ? nil : 2
         let underLinjer: Int? = fritt && (rad.brytFritt || rad.undertekstLinjer > 1) ? nil : rad.undertekstLinjer
         return VStack(alignment: .leading, spacing: 1) {
-            // Én linje kuttes i MIDTEN (halen skiller navn fra hverandre); fra AX-størrelsene brekker tittelen fritt.
-            Text(brytbar(rad.tittel)).skrift(.tekst)
+            // ÉN regel for identifikatorer på Nå og Tråder: inntil to linjer, brudd på skilletegn (mykt brudd i view-laget),
+            // kuttet bakerst på linje 2. Fra AX-størrelsene brekker tittelen fritt.
+            Text(rad.tittel.medMyktBrudd).skrift(.tekst)
                 .foregroundStyle(Color(p.tekst))
-                .lineLimit(tittelLinjer).truncationMode(tittelLinjer == 1 ? .middle : .tail)
+                .lineLimit(tittelLinjer).truncationMode(.tail)
+                .accessibilityLabel(rad.tittel)
             if let u = rad.undertekst {
                 // Håndtaket på «venter»-rader og prosjektet på tråder er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN,
                 // så halen som skiller håndtak fra hverandre (`…-eksempel-12`) blir stående.
-                Text(brytbar(u)).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                Text(rad.undertekstLinjer == 1 ? u : u.medMyktBrudd).skrift(.undertekst).foregroundStyle(Color(p.dempet))
                     .lineLimit(underLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
             }
             if let t = rad.tillegg {

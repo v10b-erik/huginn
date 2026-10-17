@@ -124,7 +124,8 @@ struct StatusChip: View {
     var id = "naaStatusChip"
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .caption) private var led: CGFloat = Theme.Maal.led
+    @ScaledMetric(relativeTo: .caption) private var ledSkalert: CGFloat = Theme.Maal.led
+    private var led: CGFloat { min(ledSkalert, Theme.Maal.led * 1.5) }
 
     var body: some View {
         let p = Theme.palett(for: scheme)
