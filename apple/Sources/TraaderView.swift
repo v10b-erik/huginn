@@ -162,6 +162,7 @@ private struct FeilBand: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .caption) private var ledSkalert: CGFloat = Theme.Maal.led
     @ScaledMetric(relativeTo: .caption) private var kolonneSkalert: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var lampeLoft: CGFloat = 4
     private var led: CGFloat { min(ledSkalert, Theme.Maal.led * 1.5) }
     private var lampeKolonne: CGFloat { min(kolonneSkalert, 14 * 1.5) }
 
@@ -170,6 +171,7 @@ private struct FeilBand: View {
         let utlogget = feil.kreverNyttToken
         let lampe = Circle().fill(utlogget ? Color(p.aksent) : Color(p.feil))
             .frame(width: led, height: led).frame(width: lampeKolonne, alignment: .leading)
+            .alignmentGuide(.firstTextBaseline) { d in d.height / 2 + lampeLoft }
         let ord = Text(utlogget ? "UTLOGGET" : "FEILET").skrift(.status)
             .foregroundStyle(utlogget ? Color(p.aksent) : Color(p.feil))
             .lineLimit(1).fixedSize(horizontal: true, vertical: false)
@@ -186,7 +188,7 @@ private struct FeilBand: View {
                     HStack(spacing: Theme.Avstand.s3) { lampe; ord }
                 }
             } else {
-                HStack(alignment: .center, spacing: Theme.Avstand.s3) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Avstand.s3) {
                     lampe
                     tekst
                     Spacer(minLength: Theme.Avstand.s2)

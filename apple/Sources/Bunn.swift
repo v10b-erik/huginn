@@ -67,8 +67,9 @@ struct BunnView: View {
 
     /// Versjonen kan ALDRI havne utenfor skjermen eller kuttes (regel 9). Rekkefølge:
     /// 1. side om side, full kilde-linje («live · ygg-v1»); 2. side om side, bare verten («ygg-v1»);
-    /// 3. stablet: versjonen over, kilde-linja under, begge venstrestilt, og versjonen får brekke i stedet for å flyte ut.
-    /// Fra og med tilgjengelighetsstørrelsene (AX1) er det alltid 3: da er monoteksten bredere enn en smal skjerm.
+    /// 3. fortsatt EN linje (samme høyde, så fanelinja ikke flytter seg): versjonen helt, verten kuttet bakerst.
+    /// Fra og med tilgjengelighetsstørrelsene (AX1) er foten alltid stablet (versjonen over, kilde-linja under, begge
+    /// venstrestilt, versjonen får brekke): da er monoteksten bredere enn en smal skjerm.
     @ViewBuilder private func fot(_ p: Theme.Palette) -> some View {
         if typeSize.isAccessibilitySize {
             stablet(p)

@@ -126,8 +126,8 @@ private struct RadView: View {
 
     var body: some View {
         let p = Theme.palett(for: scheme)
-        // AX: lampen følger tittelens første tekstlinje, ikke radens midte.
-        HStack(alignment: typeSize.isAccessibilitySize ? .firstTextBaseline : .center, spacing: Theme.Avstand.s3) {
+        // Lampen (og ordet/tiden til høyre) følger tittelens første tekstlinje på alle størrelser, ikke radens midte.
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Avstand.s3) {
             lampe(p).frame(width: lampeKolonne, alignment: .leading)
                 .alignmentGuide(.firstTextBaseline) { d in d.height / 2 + lampeLoft }
             if typeSize.isAccessibilitySize {
@@ -173,8 +173,10 @@ private struct RadView: View {
     private func tekst(_ p: Theme.Palette) -> some View {
         // Fra AX-størrelsene kuttes ingenting i rader som sier det (`brytFritt`); ellers kuttes etter radens egne linjetall.
         let fritt = typeSize.isAccessibilitySize
+        // `rad.tittelLinjer` (AppCore) er DØDT i view-laget siden bruddregelen: alle titler har 2 linjer utenfor AX. Beholdt i
+        // datamodellen (AppCore holdes urørt), bortsett fra at skjelettet fortsatt setter den.
         let tittelLinjer: Int? = fritt ? nil : 2
-        let underLinjer: Int? = fritt && (rad.brytFritt || rad.undertekstLinjer > 1) ? nil : rad.undertekstLinjer
+        let underLinjer: Int? = fritt ? nil : rad.undertekstLinjer
         return VStack(alignment: .leading, spacing: 1) {
             // ÉN regel for identifikatorer på Nå og Tråder: inntil to linjer, brudd på skilletegn (mykt brudd i view-laget),
             // kuttet bakerst på linje 2. Fra AX-størrelsene brekker tittelen fritt.
@@ -185,8 +187,8 @@ private struct RadView: View {
             if let u = rad.undertekst {
                 // Håndtaket på «venter»-rader og prosjektet på tråder er ÉN linje (`undertekstLinjer`) og kuttes i MIDTEN,
                 // så halen som skiller håndtak fra hverandre (`…-eksempel-12`) blir stående.
-                Text(rad.undertekstLinjer == 1 ? u : u.medMyktBrudd).skrift(.undertekst).foregroundStyle(Color(p.dempet))
-                    .lineLimit(underLinjer).truncationMode(rad.undertekstLinjer == 1 ? .middle : .tail)
+                Text(fritt || rad.undertekstLinjer > 1 ? u.medMyktBrudd : u).skrift(.undertekst).foregroundStyle(Color(p.dempet))
+                    .lineLimit(underLinjer).truncationMode(rad.undertekstLinjer == 1 && !fritt ? .middle : .tail)
             }
             if let t = rad.tillegg {
                 Text(t).skrift(.undertekst).foregroundStyle(Color(p.dempet)).lineLimit(1)
